@@ -42,6 +42,12 @@ export interface RenderRequest {
      * master output only, never to stems.
      */
     masterInsert?: (ctx: BaseAudioContext, master: AudioNode) => AudioNode;
+    /**
+     * Delay, in frames at the render's sample rate, that `masterInsert` adds (a compressor's
+     * look-ahead, for example). The master is rendered that much longer and advanced by it, so
+     * it stays sample-aligned with the stems and has the same length.
+     */
+    masterLatencyFrames?: number;
     /** output-processor worklet URL; without it processing is skipped (and reported) */
     fxModuleUrl?: string;
     maxPerVoice?: number;

@@ -131,7 +131,9 @@ The `Mixer` builds this graph on any `BaseAudioContext`. Applications may insert
 nodes after `mixer.output` (DOWNBEAT keeps its existing master compressor there); such nodes
 are outside Core. For offline renders, `RenderRequest.masterInsert(ctx, master)` builds the
 same nodes in the render's context; they are applied to the master output only, never to
-stems.
+stems. If those nodes delay the signal (Chromium's `DynamicsCompressorNode` looks ahead by
+`floor(0.006 x sampleRate)` frames), `masterLatencyFrames` advances the master by that much so
+it stays sample-aligned with the stems.
 
 **Fades.** Instruments fade notes out (release, voice stealing, chokes, panic) from the level
 the note has at that moment. `GainEnvelope` records what an instrument scheduled on a gain

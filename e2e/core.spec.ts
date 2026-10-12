@@ -268,3 +268,32 @@ test('masterInsert adds the application\'s own master stage to the master only',
   expect(r.peak).toBeGreaterThan(0.1);
   expect(r.err).toBeLessThan(1e-6);
 });
+
+test('masterLatencyFrames keeps a delaying master insert aligned with the stems', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (kick) => {
+    const { core, workletUrl } = window as any;
+    const bytes = Uint8Array.from(atob(kick), (c) => c.charCodeAt(0)).buffer;
+    const inst = new core.SampleInstrument(core.toAudioBuffer(await core.decodeSample(bytes, 'kick.wav')), { ...core.defaultZone(), mode: 'oneshot' });
+    const timeline = { tempo: core.constantTempo(120, 96), length: 96, voices: [{ id: 'v', name: 'V' }], events: [{ type: 'note', tick: 0, duration: 10, voice: 'v', pitch: 60, velocity: 127 }, { type: 'note', tick: 48, duration: 10, voice: 'v', pitch: 60, velocity: 127 }] };
+    const D = 300;
+    const delay = (ctx: BaseAudioContext, input: AudioNode) => {
+      const d = ctx.createDelay(1);
+      d.delayTime.value = D / ctx.sampleRate;
+      input.connect(d);
+      return d;
+    };
+    const run = (latency: number) => core.renderTimeline({ timeline, tailSeconds: 0.2, master: true, stems: [{ voice: 'v', processed: true }], resolve: () => inst, fxModuleUrl: workletUrl, masterInsert: delay, masterLatencyFrames: latency });
+    const late = await run(0);
+    const fixed = await run(D);
+    const diff = (a: Float32Array, b: Float32Array) => a.reduce((m: number, v: number, i: number) => Math.max(m, Math.abs(v - b[i])), 0);
+    return {
+      lengths: [late.outputs[0].channels[0].length, fixed.outputs[0].channels[0].length, fixed.outputs[1].channels[0].length, fixed.frames],
+      lateDiff: diff(late.outputs[0].channels[0], late.outputs[1].channels[0]),
+      fixedDiff: diff(fixed.outputs[0].channels[0], fixed.outputs[1].channels[0]),
+    };
+  }, b64(kickWav()));
+  expect(new Set(r.lengths).size).toBe(1);
+  expect(r.lateDiff).toBeGreaterThan(0.1);
+  expect(r.fixedDiff).toBeLessThan(1e-6);
+});

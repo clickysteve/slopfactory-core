@@ -137,10 +137,13 @@ test('live playback chokes exactly like the offline render', async ({ page }) =>
     mixer.output.connect(rec);
     rec.connect(sink).connect(ctx.destination);
     await new Promise((res) => setTimeout(res, 200));
-    const t0 = ctx.currentTime + 0.3;
+    // Chromium starts sources between samples when asked to (interpolating), so each note is
+    // placed a millionth of a frame before the frame the offline render puts it on
+    const f0 = Math.ceil((ctx.currentTime + 0.3) * 44100);
+    const at = (s: number) => (f0 + Math.round(s * 44100) - 1e-6) / 44100;
     notes.forEach(([s, voice, instrument], i) => {
-      player.noteOn(`n${i}`, voice, { time: t0 + s, pitch: 60, velocity: 127, instrument });
-      player.noteOff(`n${i}`, t0 + s + 0.01);
+      player.noteOn(`n${i}`, voice, { time: at(s), pitch: 60, velocity: 127, instrument });
+      player.noteOff(`n${i}`, at(s + 0.01));
     });
     await new Promise((res) => setTimeout(res, 3400));
     const blocks: Float32Array[] = await new Promise((res) => {
@@ -155,11 +158,16 @@ test('live playback chokes exactly like the offline render', async ({ page }) =>
   expect(r.rate).toBe(SR);
   const off = F(r.offline);
   const live = F(r.live);
-  const start = live.findIndex((v) => v !== 0);
-  expect(start).toBeGreaterThan(0);
-  // align on the first sample and compare the whole performance
-  let err = 0;
-  for (let i = 0; i < off.length && start + i < live.length; i++) err = Math.max(err, Math.abs(live[start + i] - off[i]));
+  const first = live.findIndex((v) => v !== 0);
+  expect(first).toBeGreaterThan(0);
+  // align on the first sample (best of +-1 frame) and compare the whole performance
+  let err = Infinity;
+  let start = first;
+  for (const s0 of [first - 1, first, first + 1]) {
+    let e = 0;
+    for (let i = 0; i < off.length && s0 + i < live.length; i++) e = Math.max(e, Math.abs(live[s0 + i] - off[i]));
+    if (e < err) [err, start] = [e, s0];
+  }
   expect(start + off.length).toBeLessThanOrEqual(live.length);
   expect(err).toBeLessThan(1e-4);
 });

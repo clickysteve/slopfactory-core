@@ -76,13 +76,15 @@ async function renderTimeline(req) {
 async function renderGroup(req, group, frames, sr, progress) {
 	if (req.signal?.aborted) throw new RenderCancelled();
 	const channels = group.length * 2;
-	const ctx = req.createContext ? req.createContext(channels, frames, sr) : new OfflineAudioContext({
+	const needsAll = group.some((o) => o.kind === "master");
+	const latency = needsAll && req.masterInsert ? Math.max(0, Math.round(req.masterLatencyFrames ?? 0)) : 0;
+	const length = frames + latency;
+	const ctx = req.createContext ? req.createContext(channels, length, sr) : new OfflineAudioContext({
 		numberOfChannels: channels,
-		length: frames,
+		length,
 		sampleRate: sr
 	});
 	const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
-	const needsAll = group.some((o) => o.kind === "master");
 	const needed = new Set(needsAll ? req.timeline.voices.map((v) => v.id) : group.map((o) => o.voice));
 	const mixer = new Mixer(ctx, {
 		voices: req.timeline.voices.map((v) => v.id),
@@ -142,7 +144,7 @@ async function renderGroup(req, group, frames, sr, progress) {
 	};
 	const quantum = 128 / sr;
 	const chunk = Math.max(quantum * 4, Math.floor((req.chunkSeconds ?? 2) / quantum) * quantum);
-	const total = frames / sr;
+	const total = length / sr;
 	schedule(chunk);
 	for (let T = chunk; T < total - quantum; T += chunk) {
 		const at = T;
@@ -163,10 +165,13 @@ async function renderGroup(req, group, frames, sr, progress) {
 	if (cancelled || req.signal?.aborted) throw new RenderCancelled();
 	return {
 		processed: fxAvailable,
-		outputs: group.map((o, k) => ({
-			...o,
-			channels: [buf.getChannelData(2 * k).slice(), buf.getChannelData(2 * k + 1).slice()]
-		}))
+		outputs: group.map((o, k) => {
+			const from = o.kind === "master" ? latency : 0;
+			return {
+				...o,
+				channels: [buf.getChannelData(2 * k).slice(from, from + frames), buf.getChannelData(2 * k + 1).slice(from, from + frames)]
+			};
+		})
 	};
 }
 //#endregion

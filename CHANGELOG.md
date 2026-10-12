@@ -10,6 +10,9 @@
   that are not part of the current render pass, so stems match the mix.
 * **`masterInsert`** (`RenderRequest`): the application's own nodes after the master (for
   example a master compressor), applied to the master output only, never to stems.
+* **`masterLatencyFrames`** (`RenderRequest`): the delay a master insert adds (a compressor's
+  look-ahead). The master is rendered that much longer and advanced, so it stays
+  sample-aligned with the stems.
 * `NoteHandle.stop(time, fade?)` takes an optional fade length.
 * **Fix: fades scheduled ahead start at the right time.** A GATED or LOOP note's release, a
   stolen note and a stopped note now fade from their level at the note-off/stop time. Before,

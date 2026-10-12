@@ -6,7 +6,7 @@ import { a as stripSeed, i as defaultStrip, n as NotePlayer, r as Mixer, t as DE
 import "./audio.js";
 import { _ as region, a as MAX_SAMPLE_SECONDS, b as zoneProblems, c as decodeSample, d as SampleInstrument, f as MIN_LOOP_SECONDS, g as playbackRate, h as parseNoteName, i as MAX_SAMPLE_BYTES, l as toAudioBuffer, m as noteName, n as snapToZeroCrossing, o as SampleError, p as defaultZone, r as waveformPeaks, s as browserDecode, t as peakOf, u as STOP_FADE_SECONDS, v as repairZone, y as velocityGain } from "./chunks/sampler-DUA4hguf.js";
 import { a as MACRO_INFO, c as repairTransform, d as transformKey, f as OutputFxStream, h as processBuffers, i as applyTransform, l as stretchCharacters, m as createChain, n as WorkerTransformRunner, o as identityTransform, p as SETTINGS_FADE, r as syncRunner, s as isIdentity, t as TransformCache, u as toRecipe } from "./chunks/dsp-CunHLtVR.js";
-import { a as renderLength, i as planRenders, n as MAX_RENDER_SECONDS, o as renderTimeline, r as RenderCancelled, t as EXPORT_SAMPLE_RATE } from "./chunks/render-B71qeF9G.js";
+import { a as renderLength, i as planRenders, n as MAX_RENDER_SECONDS, o as renderTimeline, r as RenderCancelled, t as EXPORT_SAMPLE_RATE } from "./chunks/render-BucCRc9f.js";
 import { a as levelStats, i as encodeWav16, n as slug, o as wavInfo, r as uniqueNames, t as fileName } from "./chunks/export-DVd1_hi8.js";
 import { n as createZip, r as readZip, t as crc32 } from "./chunks/zip-BmWC-HOl.js";
 import { a as IndexedDbSampleStore, c as sampleFromBytes, i as writeBundle, l as sha256Hex, n as BUNDLE_VERSION, o as MemorySampleStore, r as readBundle, s as StorageError, t as BUNDLE_FORMAT } from "./chunks/storage-D13ONg_0.js";

@@ -47,6 +47,12 @@ export interface RenderRequest {
    * master output only, never to stems.
    */
   masterInsert?: (ctx: BaseAudioContext, master: AudioNode) => AudioNode;
+  /**
+   * Delay, in frames at the render's sample rate, that `masterInsert` adds (a compressor's
+   * look-ahead, for example). The master is rendered that much longer and advanced by it, so
+   * it stays sample-aligned with the stems and has the same length.
+   */
+  masterLatencyFrames?: number;
   /** output-processor worklet URL; without it processing is skipped (and reported) */
   fxModuleUrl?: string;
   maxPerVoice?: number;
@@ -132,9 +138,11 @@ export async function renderTimeline(req: RenderRequest): Promise<RenderResult> 
 async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr: number, progress: (f: number) => void): Promise<{ outputs: RenderOutput[]; processed: boolean }> {
   if (req.signal?.aborted) throw new RenderCancelled();
   const channels = group.length * 2;
-  const ctx = req.createContext ? req.createContext(channels, frames, sr) : new OfflineAudioContext({ numberOfChannels: channels, length: frames, sampleRate: sr });
-  const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
   const needsAll = group.some((o) => o.kind === 'master');
+  const latency = needsAll && req.masterInsert ? Math.max(0, Math.round(req.masterLatencyFrames ?? 0)) : 0;
+  const length = frames + latency;
+  const ctx = req.createContext ? req.createContext(channels, length, sr) : new OfflineAudioContext({ numberOfChannels: channels, length, sampleRate: sr });
+  const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
   const needed = new Set(needsAll ? req.timeline.voices.map((v) => v.id) : group.map((o) => o.voice!));
   const mixer = new Mixer(ctx, {
     voices: req.timeline.voices.map((v) => v.id),
@@ -188,7 +196,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   };
   const quantum = 128 / sr;
   const chunk = Math.max(quantum * 4, Math.floor((req.chunkSeconds ?? 2) / quantum) * quantum);
-  const total = frames / sr;
+  const total = length / sr;
   schedule(chunk);
   for (let T = chunk; T < total - quantum; T += chunk) {
     const at = T;
@@ -209,6 +217,10 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   if (cancelled || req.signal?.aborted) throw new RenderCancelled();
   return {
     processed: fxAvailable,
-    outputs: group.map((o, k) => ({ ...o, channels: [buf.getChannelData(2 * k).slice(), buf.getChannelData(2 * k + 1).slice()] as [Float32Array, Float32Array] })),
+    outputs: group.map((o, k) => {
+      // the master is advanced by the insert's latency; every output ends up `frames` long from frame 0
+      const from = o.kind === 'master' ? latency : 0;
+      return { ...o, channels: [buf.getChannelData(2 * k).slice(from, from + frames), buf.getChannelData(2 * k + 1).slice(from, from + frames)] as [Float32Array, Float32Array] };
+    }),
   };
 }
