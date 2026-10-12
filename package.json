@@ -1,0 +1,80 @@
+{
+  "name": "@slopfactory/core",
+  "version": "0.1.0",
+  "description": "Slop Factory Core: shared audio, sampling, DSP, rendering, WAV/ZIP export and storage for browser music applications.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/clickysteve/slopfactory-core.git"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "LICENSE",
+    "NOTICE.md",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./events": {
+      "types": "./dist/types/events/index.d.ts",
+      "import": "./dist/events.js"
+    },
+    "./audio": {
+      "types": "./dist/types/audio/index.d.ts",
+      "import": "./dist/audio.js"
+    },
+    "./sampler": {
+      "types": "./dist/types/sampler/index.d.ts",
+      "import": "./dist/sampler.js"
+    },
+    "./dsp": {
+      "types": "./dist/types/dsp/index.d.ts",
+      "import": "./dist/dsp.js"
+    },
+    "./render": {
+      "types": "./dist/types/render/index.d.ts",
+      "import": "./dist/render.js"
+    },
+    "./export": {
+      "types": "./dist/types/export/index.d.ts",
+      "import": "./dist/export.js"
+    },
+    "./storage": {
+      "types": "./dist/types/storage/index.d.ts",
+      "import": "./dist/storage.js"
+    },
+    "./midi": {
+      "types": "./dist/types/midi/index.d.ts",
+      "import": "./dist/midi.js"
+    },
+    "./output-fx-worklet.js": "./dist/output-fx-worklet.js",
+    "./transform-worker.js": "./dist/transform-worker.js",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "npm run build:e2e && playwright test",
+    "check:dist": "node scripts/build.mjs && git diff --exit-code -- dist",
+    "verify": "npm run typecheck && npm test && npm run build && npm run test:e2e",
+    "build:e2e": "node e2e/harness/link.mjs && vite build --config e2e/harness/vite.config.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.56.1",
+    "@types/node": "^22.20.5",
+    "fake-indexeddb": "^6.2.5",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.4",
+    "vitest": "^4.1.11"
+  }
+}
