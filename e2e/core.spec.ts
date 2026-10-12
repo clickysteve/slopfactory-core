@@ -297,3 +297,41 @@ test('masterLatencyFrames keeps a delaying master insert aligned with the stems'
   expect(r.lateDiff).toBeGreaterThan(0.1);
   expect(r.fixedDiff).toBeLessThan(1e-6);
 });
+
+test('preRollSeconds lets an application compressor settle; Core processing is unchanged by it', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (kick) => {
+    const { core, workletUrl } = window as any;
+    const bytes = Uint8Array.from(atob(kick), (c) => c.charCodeAt(0)).buffer;
+    const inst = new core.SampleInstrument(core.toAudioBuffer(await core.decodeSample(bytes, 'kick.wav')), { ...core.defaultZone(), mode: 'oneshot' });
+    const timeline = { tempo: core.constantTempo(120, 96), length: 192, voices: [{ id: 'v', name: 'V' }], events: [0, 96].map((tick) => ({ type: 'note', tick, duration: 10, voice: 'v', pitch: 60, velocity: 127 })) };
+    const comp = (ctx: BaseAudioContext, input: AudioNode) => {
+      const c = ctx.createDynamicsCompressor();
+      c.threshold.value = -20;
+      input.connect(c);
+      return c;
+    };
+    // the voice runs a noisy output stage, which must come out identical with and without pre-roll
+    const fx = core.FX_PRESETS.find((p: any) => p.key === 'cassette').apply(core.cleanFx());
+    const run = (pre: number) => core.renderTimeline({ timeline, tailSeconds: 0.2, master: true, stems: [{ voice: 'v', processed: true }], strips: { v: { fx } }, resolve: () => inst, fxModuleUrl: workletUrl, masterInsert: comp, masterLatencyFrames: 264, preRollSeconds: pre });
+    const a = await run(0);
+    const b = await run(0.25);
+    const win = (x: Float32Array, at: number) => {
+      let s = 0;
+      for (let i = at; i < at + 2000; i++) s += x[i] * x[i];
+      return Math.sqrt(s / 2000);
+    };
+    const diff = (x: Float32Array, y: Float32Array) => x.reduce((m: number, v: number, i: number) => Math.max(m, Math.abs(v - y[i])), 0);
+    const half = 22050;
+    return {
+      frames: [a.frames, b.frames, b.outputs[0].channels[0].length, b.outputs[1].channels[0].length],
+      firstOverSecondNoPre: win(a.outputs[0].channels[0], 0) / win(a.outputs[0].channels[0], half),
+      firstOverSecondPre: win(b.outputs[0].channels[0], 0) / win(b.outputs[0].channels[0], half),
+      stemDiff: diff(a.outputs[1].channels[0], b.outputs[1].channels[0]),
+    };
+  }, b64(kickWav()));
+  expect(new Set(r.frames).size).toBe(1);
+  expect(r.firstOverSecondNoPre).toBeLessThan(0.9); // a fresh compressor holds the first hit down
+  expect(Math.abs(r.firstOverSecondPre - 1)).toBeLessThan(0.05);
+  expect(r.stemDiff).toBeLessThan(1e-6);
+});

@@ -13,6 +13,10 @@
 * **`masterLatencyFrames`** (`RenderRequest`): the delay a master insert adds (a compressor's
   look-ahead). The master is rendered that much longer and advanced, so it stays
   sample-aligned with the stems.
+* **`preRollSeconds`** (`RenderRequest`): silence rendered before the music and discarded, so an
+  application's own stateful master nodes settle as they have live (a fresh
+  `DynamicsCompressorNode` attenuates for about 100 ms). Core's processors are reset where the
+  music starts, so their output does not change.
 * `NoteHandle.stop(time, fade?)` takes an optional fade length.
 * **Fix: fades scheduled ahead start at the right time.** A GATED or LOOP note's release, a
   stolen note and a stopped note now fade from their level at the note-off/stop time. Before,

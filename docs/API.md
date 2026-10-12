@@ -89,7 +89,7 @@ Everything below, plus `CORE_VERSION` (the package version string).
 | Export | Summary |
 |---|---|
 | `renderTimeline(RenderRequest)` → `Promise<RenderResult>` | master and/or stems, aligned, one shared tail |
-| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; choke?; masterInsert?; masterLatencyFrames?; fxModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
+| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; choke?; masterInsert?; masterLatencyFrames?; preRollSeconds?; fxModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
 | `interface StemRequest { voice; processed }` | |
 | `interface RenderResult { sampleRate; frames; seconds; musicSeconds; outputs: RenderOutput[]; renders; processed }` | |
 | `renderLength(timeline, tail, rate)`, `planRenders(...)`, `EXPORT_SAMPLE_RATE` (44100), `MAX_RENDER_SECONDS` (20 min), `class RenderCancelled` | |

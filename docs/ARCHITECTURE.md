@@ -133,7 +133,10 @@ are outside Core. For offline renders, `RenderRequest.masterInsert(ctx, master)`
 same nodes in the render's context; they are applied to the master output only, never to
 stems. If those nodes delay the signal (Chromium's `DynamicsCompressorNode` looks ahead by
 `floor(0.006 x sampleRate)` frames), `masterLatencyFrames` advances the master by that much so
-it stays sample-aligned with the stems.
+it stays sample-aligned with the stems. Such nodes also start cold in a new
+OfflineAudioContext (a fresh compressor holds its first ~100 ms down), so `preRollSeconds`
+renders a little silence first and discards it; Core's own processors are reset where the music
+starts, so the pre-roll does not change them.
 
 **Fades.** Instruments fade notes out (release, voice stealing, chokes, panic) from the level
 the note has at that moment. `GainEnvelope` records what an instrument scheduled on a gain

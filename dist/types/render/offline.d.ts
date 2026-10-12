@@ -48,6 +48,13 @@ export interface RenderRequest {
      * it stays sample-aligned with the stems and has the same length.
      */
     masterLatencyFrames?: number;
+    /**
+     * Silence rendered before the music and then discarded (seconds; rounded up to whole 128-frame
+     * blocks), so stateful nodes the application adds settle as they have live (a fresh
+     * DynamicsCompressorNode attenuates for its first ~100 ms). Core's own processors are reset
+     * where the music starts, so their output is the same as without pre-roll.
+     */
+    preRollSeconds?: number;
     /** output-processor worklet URL; without it processing is skipped (and reported) */
     fxModuleUrl?: string;
     maxPerVoice?: number;

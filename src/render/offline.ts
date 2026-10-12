@@ -53,6 +53,13 @@ export interface RenderRequest {
    * it stays sample-aligned with the stems and has the same length.
    */
   masterLatencyFrames?: number;
+  /**
+   * Silence rendered before the music and then discarded (seconds; rounded up to whole 128-frame
+   * blocks), so stateful nodes the application adds settle as they have live (a fresh
+   * DynamicsCompressorNode attenuates for its first ~100 ms). Core's own processors are reset
+   * where the music starts, so their output is the same as without pre-roll.
+   */
+  preRollSeconds?: number;
   /** output-processor worklet URL; without it processing is skipped (and reported) */
   fxModuleUrl?: string;
   maxPerVoice?: number;
@@ -140,7 +147,9 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   const channels = group.length * 2;
   const needsAll = group.some((o) => o.kind === 'master');
   const latency = needsAll && req.masterInsert ? Math.max(0, Math.round(req.masterLatencyFrames ?? 0)) : 0;
-  const length = frames + latency;
+  const pre = Math.ceil((Math.max(0, req.preRollSeconds ?? 0) * sr) / 128) * 128;
+  const t0 = pre / sr;
+  const length = pre + frames + latency;
   const ctx = req.createContext ? req.createContext(channels, length, sr) : new OfflineAudioContext({ numberOfChannels: channels, length, sampleRate: sr });
   const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
   const needed = new Set(needsAll ? req.timeline.voices.map((v) => v.id) : group.map((o) => o.voice!));
@@ -167,6 +176,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   ctx.destination.channelCountMode = 'explicit';
   ctx.destination.channelInterpretation = 'discrete';
   merger.connect(ctx.destination);
+  if (pre) mixer.resetFx(t0);
 
   const player = new NotePlayer(ctx, mixer, req.resolve, { maxPerVoice: req.maxPerVoice, choke: req.choke });
   const tm = new TimeMap(req.timeline.tempo);
@@ -177,7 +187,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   const schedule = (until: number) => {
     while (next < events.length) {
       const e = events[next];
-      const t = tm.seconds(e.tick);
+      const t = t0 + tm.seconds(e.tick);
       if (t >= until) break;
       next++;
       if (cancelled) continue;
@@ -190,7 +200,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
         }
         const key = `n${next}`;
         player.noteOn(key, n.voice, note);
-        player.noteOff(key, tm.seconds(n.tick + n.duration));
+        player.noteOff(key, t0 + tm.seconds(n.tick + n.duration));
       } else if (needed.has(e.voice)) req.onControl?.(e, t, mixer);
     }
   };
@@ -218,8 +228,9 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   return {
     processed: fxAvailable,
     outputs: group.map((o, k) => {
-      // the master is advanced by the insert's latency; every output ends up `frames` long from frame 0
-      const from = o.kind === 'master' ? latency : 0;
+      // the pre-roll is dropped and the master advanced by the insert's latency: every output is
+      // `frames` long from the music's frame 0
+      const from = pre + (o.kind === 'master' ? latency : 0);
       return { ...o, channels: [buf.getChannelData(2 * k).slice(from, from + frames), buf.getChannelData(2 * k + 1).slice(from, from + frames)] as [Float32Array, Float32Array] };
     }),
   };
