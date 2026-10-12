@@ -34,6 +34,8 @@ export interface MixerOptions {
   seed?: number;
   /** build unprocessed taps as well (only needed for unprocessed stem export) */
   dryTaps?: boolean;
+  /** restart every processor's state at this context time (built in, so it is never late) */
+  resetAt?: number;
 }
 
 interface Strip {
@@ -62,14 +64,14 @@ export class Mixer {
     this.voices = [...opts.voices];
     const seed = opts.seed ?? 1;
     this.masterBus = ctx.createGain();
-    this.masterFx = createOutputFxNode(ctx, opts.masterFx ?? cleanFx(), stripSeed(seed, 1000), opts.fxAvailable);
+    this.masterFx = createOutputFxNode(ctx, opts.masterFx ?? cleanFx(), stripSeed(seed, 1000), opts.fxAvailable, opts.resetAt);
     this.output = ctx.createGain();
     this.output.gain.value = opts.masterGain ?? 1;
     this.masterBus.connect(this.masterFx.node).connect(this.output);
     opts.voices.forEach((id, i) => {
       const s = { ...defaultStrip(), ...opts.strips?.[id] };
       const input = ctx.createGain();
-      const fx = createOutputFxNode(ctx, s.fx, stripSeed(seed, i), opts.fxAvailable);
+      const fx = createOutputFxNode(ctx, s.fx, stripSeed(seed, i), opts.fxAvailable, opts.resetAt);
       const gain = ctx.createGain();
       const pan = ctx.createStereoPanner();
       const gate = ctx.createGain();

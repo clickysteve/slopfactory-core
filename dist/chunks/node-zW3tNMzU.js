@@ -780,8 +780,13 @@ function loadOutputFx(ctx, moduleUrl) {
 async function outputFxAvailable(ctx) {
 	return await loaded.get(ctx) ?? false;
 }
-/** `available` must be the resolved result of loadOutputFx for this context. */
-function createOutputFxNode(ctx, settings, seed, available) {
+/**
+* `available` must be the resolved result of loadOutputFx for this context. `resetAt` (context
+* seconds) restarts the processor's state at that time; given here it is part of the node's
+* construction, so it cannot arrive late the way a `reset()` message can in a fast offline
+* render.
+*/
+function createOutputFxNode(ctx, settings, seed, available, resetAt) {
 	if (available && typeof AudioWorkletNode !== "undefined") {
 		const node = new AudioWorkletNode(ctx, OUTPUT_FX_PROCESSOR, {
 			numberOfInputs: 1,
@@ -792,7 +797,8 @@ function createOutputFxNode(ctx, settings, seed, available) {
 			channelInterpretation: "speakers",
 			processorOptions: {
 				settings,
-				seed
+				seed,
+				...resetAt !== void 0 ? { resetAt } : {}
 			}
 		});
 		const h = {

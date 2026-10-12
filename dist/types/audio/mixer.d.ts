@@ -31,6 +31,8 @@ export interface MixerOptions {
     seed?: number;
     /** build unprocessed taps as well (only needed for unprocessed stem export) */
     dryTaps?: boolean;
+    /** restart every processor's state at this context time (built in, so it is never late) */
+    resetAt?: number;
 }
 /** Deterministic per-strip seed. */
 export declare const stripSeed: (seed: number, index: number) => number;

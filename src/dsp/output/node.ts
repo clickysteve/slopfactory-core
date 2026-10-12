@@ -45,8 +45,13 @@ export interface OutputFxNode {
   dispose(): void;
 }
 
-/** `available` must be the resolved result of loadOutputFx for this context. */
-export function createOutputFxNode(ctx: BaseAudioContext, settings: OutputFxSettings, seed: number, available: boolean): OutputFxNode {
+/**
+ * `available` must be the resolved result of loadOutputFx for this context. `resetAt` (context
+ * seconds) restarts the processor's state at that time; given here it is part of the node's
+ * construction, so it cannot arrive late the way a `reset()` message can in a fast offline
+ * render.
+ */
+export function createOutputFxNode(ctx: BaseAudioContext, settings: OutputFxSettings, seed: number, available: boolean, resetAt?: number): OutputFxNode {
   if (available && typeof AudioWorkletNode !== 'undefined') {
     const node = new AudioWorkletNode(ctx, OUTPUT_FX_PROCESSOR, {
       numberOfInputs: 1,
@@ -55,7 +60,7 @@ export function createOutputFxNode(ctx: BaseAudioContext, settings: OutputFxSett
       channelCount: 2,
       channelCountMode: 'explicit',
       channelInterpretation: 'speakers',
-      processorOptions: { settings, seed },
+      processorOptions: { settings, seed, ...(resetAt !== undefined ? { resetAt } : {}) },
     });
     const h: OutputFxNode = {
       node,

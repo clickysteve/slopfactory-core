@@ -1,6 +1,6 @@
 import { n as TimeMap } from "./timeline-CjtGBLYv.js";
-import { n as loadOutputFx } from "./node-BcQT94Xh.js";
-import { n as NotePlayer, r as Mixer } from "./player-B8Zoz9_C.js";
+import { n as loadOutputFx } from "./node-zW3tNMzU.js";
+import { n as NotePlayer, r as Mixer } from "./player-CF_RFAFw.js";
 //#region src/render/offline.ts
 /**
 * Offline rendering of a Timeline to a master mix and isolated, sample-aligned stems.
@@ -95,7 +95,8 @@ async function renderGroup(req, group, frames, sr, progress) {
 		masterGain: req.masterGain,
 		fxAvailable,
 		seed: req.fxSeed,
-		dryTaps: group.some((o) => o.kind === "stem" && !o.processed)
+		dryTaps: group.some((o) => o.kind === "stem" && !o.processed),
+		resetAt: pre ? t0 : void 0
 	});
 	const merger = ctx.createChannelMerger(channels);
 	merger.channelInterpretation = "discrete";
@@ -110,7 +111,11 @@ async function renderGroup(req, group, frames, sr, progress) {
 	ctx.destination.channelCountMode = "explicit";
 	ctx.destination.channelInterpretation = "discrete";
 	merger.connect(ctx.destination);
-	if (pre) mixer.resetFx(t0);
+	const at = (sec) => {
+		const f = sec * sr;
+		const F = Math.round(f);
+		return Math.abs(f - F) < 1e-6 ? F > 0 ? (F - 1e-6) / sr : 0 : sec;
+	};
 	const player = new NotePlayer(ctx, mixer, req.resolve, {
 		maxPerVoice: req.maxPerVoice,
 		choke: req.choke
@@ -122,7 +127,7 @@ async function renderGroup(req, group, frames, sr, progress) {
 	const schedule = (until) => {
 		while (next < events.length) {
 			const e = events[next];
-			const t = t0 + tm.seconds(e.tick);
+			const t = at(t0 + tm.seconds(e.tick));
 			if (t >= until) break;
 			next++;
 			if (cancelled) continue;
@@ -141,7 +146,7 @@ async function renderGroup(req, group, frames, sr, progress) {
 				}
 				const key = `n${next}`;
 				player.noteOn(key, n.voice, note);
-				player.noteOff(key, t0 + tm.seconds(n.tick + n.duration));
+				player.noteOff(key, at(t0 + tm.seconds(n.tick + n.duration)));
 			} else if (needed.has(e.voice)) req.onControl?.(e, t, mixer);
 		}
 	};

@@ -161,6 +161,8 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
     fxAvailable,
     seed: req.fxSeed,
     dryTaps: group.some((o) => o.kind === 'stem' && !o.processed),
+    // after a pre-roll, processors start afresh where the music starts
+    resetAt: pre ? t0 : undefined,
   });
   const merger = ctx.createChannelMerger(channels);
   merger.channelInterpretation = 'discrete';
@@ -176,8 +178,15 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   ctx.destination.channelCountMode = 'explicit';
   ctx.destination.channelInterpretation = 'discrete';
   merger.connect(ctx.destination);
-  if (pre) mixer.resetFx(t0);
 
+  // A time that should fall exactly on a frame can come out a hair after it in floating point,
+  // and Chromium then starts the source between samples (a whole frame late, interpolated).
+  // Such times are placed a hair before their frame instead; other times are left alone.
+  const at = (sec: number): number => {
+    const f = sec * sr;
+    const F = Math.round(f);
+    return Math.abs(f - F) < 1e-6 ? (F > 0 ? (F - 1e-6) / sr : 0) : sec;
+  };
   const player = new NotePlayer(ctx, mixer, req.resolve, { maxPerVoice: req.maxPerVoice, choke: req.choke });
   const tm = new TimeMap(req.timeline.tempo);
   // Voices outside this pass still choke the ones inside it, so their notes are kept for that.
@@ -187,7 +196,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   const schedule = (until: number) => {
     while (next < events.length) {
       const e = events[next];
-      const t = t0 + tm.seconds(e.tick);
+      const t = at(t0 + tm.seconds(e.tick));
       if (t >= until) break;
       next++;
       if (cancelled) continue;
@@ -200,7 +209,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
         }
         const key = `n${next}`;
         player.noteOn(key, n.voice, note);
-        player.noteOff(key, t0 + tm.seconds(n.tick + n.duration));
+        player.noteOff(key, at(t0 + tm.seconds(n.tick + n.duration)));
       } else if (needed.has(e.voice)) req.onControl?.(e, t, mixer);
     }
   };

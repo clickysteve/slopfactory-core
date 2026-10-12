@@ -17,6 +17,11 @@
   application's own stateful master nodes settle as they have live (a fresh
   `DynamicsCompressorNode` attenuates for about 100 ms). Core's processors are reset where the
   music starts, so their output does not change.
+* Offline renders place notes that fall exactly on a frame a hair before it, so floating-point
+  rounding never makes Chromium start them a whole (interpolated) frame late.
+* `createOutputFxNode(..., resetAt)` and `MixerOptions.resetAt`: a processor reset at a known
+  time is part of the node's construction instead of a message that a fast offline render can
+  overtake.
 * `NoteHandle.stop(time, fade?)` takes an optional fade length.
 * **Fix: fades scheduled ahead start at the right time.** A GATED or LOOP note's release, a
   stolen note and a stopped note now fade from their level at the note-off/stop time. Before,

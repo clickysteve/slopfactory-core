@@ -394,7 +394,7 @@ var C = class {
 	constructor(e) {
 		super(e);
 		let t = e.processorOptions ?? {};
-		this.stream = new C(v(t.settings), sampleRate, (t.seed ?? 1) >>> 0), this.port.onmessage = (e) => {
+		this.stream = new C(v(t.settings), sampleRate, (t.seed ?? 1) >>> 0), typeof t.resetAt == "number" && (this.resetAt = t.resetAt), this.port.onmessage = (e) => {
 			let t = e.data;
 			t.type === "settings" ? this.stream.set(v(t.settings)) : t.type === "reset" && (this.resetAt = typeof t.at == "number" ? t.at : 0);
 		};

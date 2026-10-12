@@ -19,7 +19,7 @@ declare class AudioWorkletProcessor {
 }
 
 interface Options {
-  processorOptions?: { settings?: OutputFxSettings; seed?: number };
+  processorOptions?: { settings?: OutputFxSettings; seed?: number; resetAt?: number };
 }
 
 class OutputFxProcessor extends AudioWorkletProcessor {
@@ -30,6 +30,7 @@ class OutputFxProcessor extends AudioWorkletProcessor {
     super(options);
     const po = options.processorOptions ?? {};
     this.stream = new OutputFxStream(repairFx(po.settings), sampleRate, (po.seed ?? 1) >>> 0);
+    if (typeof po.resetAt === 'number') this.resetAt = po.resetAt;
     this.port.onmessage = (e: MessageEvent) => {
       const m = e.data as { type: string; settings?: unknown; at?: number };
       if (m.type === 'settings') this.stream.set(repairFx(m.settings));

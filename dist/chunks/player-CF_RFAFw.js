@@ -1,4 +1,4 @@
-import { s as cleanFx, t as createOutputFxNode } from "./node-BcQT94Xh.js";
+import { s as cleanFx, t as createOutputFxNode } from "./node-zW3tNMzU.js";
 //#region src/audio/mixer.ts
 /**
 * Audio routing shared by live playback and offline rendering:
@@ -33,7 +33,7 @@ var Mixer = class {
 		this.voices = [...opts.voices];
 		const seed = opts.seed ?? 1;
 		this.masterBus = ctx.createGain();
-		this.masterFx = createOutputFxNode(ctx, opts.masterFx ?? cleanFx(), stripSeed(seed, 1e3), opts.fxAvailable);
+		this.masterFx = createOutputFxNode(ctx, opts.masterFx ?? cleanFx(), stripSeed(seed, 1e3), opts.fxAvailable, opts.resetAt);
 		this.output = ctx.createGain();
 		this.output.gain.value = opts.masterGain ?? 1;
 		this.masterBus.connect(this.masterFx.node).connect(this.output);
@@ -43,7 +43,7 @@ var Mixer = class {
 				...opts.strips?.[id]
 			};
 			const input = ctx.createGain();
-			const fx = createOutputFxNode(ctx, s.fx, stripSeed(seed, i), opts.fxAvailable);
+			const fx = createOutputFxNode(ctx, s.fx, stripSeed(seed, i), opts.fxAvailable, opts.resetAt);
 			const gain = ctx.createGain();
 			const pan = ctx.createStereoPanner();
 			const gate = ctx.createGain();
