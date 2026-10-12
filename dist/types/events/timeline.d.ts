@@ -2,7 +2,7 @@
  * The common musical event representation.
  *
  * Time is counted in integer **ticks** at a resolution chosen by the application (`ppq`,
- * pulses per quarter note: ANVIL uses 24, DOWNBEAT 96). Integers are exact, so positions never
+ * pulses per quarter note: ANVIL uses 24, DOWNBEAT 96 000). Integers are exact, so positions never
  * drift however long a piece runs. A **tempo map** turns ticks into seconds and sample frames:
  * each event's time is computed directly from its own tick and the tempo segment it falls in,
  * never by adding up durations, so there is no cumulative floating-point error.

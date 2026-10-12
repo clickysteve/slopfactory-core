@@ -90,3 +90,28 @@ const clock = createInternalClock({ bpm: 120, lookaheadMs: 100 });
 clock.onTick((time) => engine.tick(time));          // 24 per quarter note
 const follow = createPulseFollower({ lossMs: 500 }); // or createTempoFollower()
 ```
+
+## 5. Findings from the DOWNBEAT integration (Core 0.2.0)
+
+DOWNBEAT adopted Core's audio modules without touching its MIDI code. What that showed for the
+shared MIDI work:
+
+* **Note events need a sound identity beside their MIDI note.** DOWNBEAT's engine now marks each
+  note with the voice whose sound plays it and the sound step, so internal audio and stems never
+  infer a drum from a pitch. A shared MIDI output should carry the same identity (`instrument` in
+  Core's event model) alongside channel and note.
+* **Two clocks map to audio time.** DOWNBEAT schedules MIDI and internal sounds from the same
+  `performance.now()` timestamps and maps them to the AudioContext with `getOutputTimestamp()`;
+  ANVIL adds the output latency. A shared clock module should own that mapping (and smooth it:
+  in a headless browser the first note after Start can be a few ms late, and the mapping can move
+  once by about 20 ms).
+* **Recorded takes are timed events.** DOWNBEAT's REC TAKE keeps each note's real time so a take
+  exported as audio keeps tempo changes and an external clock. A shared recorder should keep
+  timestamps, not only ticks.
+* **Song Position** (DOWNBEAT sends and follows F2) and the pulse estimator are good candidates
+  for the shared clock follower, as planned in step 5.
+* **MIDI file export** in DOWNBEAT writes one tempo; its audio export follows pattern tempo
+  changes. A shared SMF writer should write the tempo map.
+
+None of this is implemented in Core yet; the interfaces in `src/midi/interfaces.ts` are
+unchanged.

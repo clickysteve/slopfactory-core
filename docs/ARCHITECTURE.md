@@ -54,7 +54,8 @@ interface NoteEvent { type: 'note'; tick; duration; voice; pitch; velocity; chan
   position from its own tick and tempo segment (segment start times are summed once from
   exact tick differences), so a note a million ticks in is placed exactly where a direct
   calculation puts it. Tempo changes are segments of the map. Applications choose the
-  resolution: ANVIL uses 24 PPQ (MIDI clocks), DOWNBEAT would use 96 (its fine units).
+  resolution: ANVIL uses 24 PPQ (MIDI clocks); DOWNBEAT uses 96 000, because swing, groove and
+  shifts put its notes between its 96-per-quarter fine units.
 * **Durations, not note-offs.** Renderers schedule notes with known lengths. Applications
   that think in MIDI note-on/note-off use `NotePairer`, which applies MIDI pairing semantics
   (a retrigger ends the sounding note).
