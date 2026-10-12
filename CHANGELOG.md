@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0
+
+* **Choke groups** (`NotePlayer` option `choke`, `RenderRequest.choke`): a note can belong to a
+  group and cut the group's sounding notes, across voices, with a short anti-click fade.
+  Configurable per note: `cuts`, `cutBy`, `fade`. Notes starting at the same instant do not
+  cut each other. Notes without a group are never cut, so nothing changes unless an
+  application assigns groups. Offline renders apply chokes from every voice, including voices
+  that are not part of the current render pass, so stems match the mix.
+* **`masterInsert`** (`RenderRequest`): the application's own nodes after the master (for
+  example a master compressor), applied to the master output only, never to stems.
+* `NoteHandle.stop(time, fade?)` takes an optional fade length.
+* **Fix: fades scheduled ahead start at the right time.** A GATED or LOOP note's release, a
+  stolen note and a stopped note now fade from their level at the note-off/stop time. Before,
+  when the note-off was scheduled in advance (always offline, usually live), Chromium ramped
+  from the note's start, because `cancelAndHoldAtTime` adds no hold point unless a ramp is in
+  progress: held notes faded out over their whole length. The sample instrument now records
+  its gain automation (`GainEnvelope`) and anchors every fade with an explicit value. ONE SHOT
+  notes, which ignore note-off, were not affected unless stolen or stopped.
+* The AudioWorklet and Worker files are minified.
+
 ## 0.1.0
 
 First release: Slop Factory Core extracted from ANVIL (`src/core/` on ANVIL's

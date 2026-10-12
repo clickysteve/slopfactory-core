@@ -5,6 +5,8 @@
  */
 import { type Instrument, type NoteHandle, type NoteRequest } from '../audio/instrument';
 import { type SampleZone } from './zone';
+/** Default fade when a note is stopped (stealing, panic, choke): 5 ms, linear. */
+export declare const STOP_FADE_SECONDS = 0.005;
 export declare class SampleInstrument implements Instrument {
     readonly buffer: AudioBuffer;
     zone: SampleZone;

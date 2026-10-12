@@ -1,6 +1,6 @@
 import { n as TimeMap } from "./timeline-CjtGBLYv.js";
 import { n as loadOutputFx } from "./node-BcQT94Xh.js";
-import { n as Mixer, t as NotePlayer } from "./player-B55U34_V.js";
+import { n as NotePlayer, r as Mixer } from "./player-B8Zoz9_C.js";
 //#region src/render/offline.ts
 /**
 * Offline rendering of a Timeline to a master mix and isolated, sample-aligned stems.
@@ -95,9 +95,10 @@ async function renderGroup(req, group, frames, sr, progress) {
 	});
 	const merger = ctx.createChannelMerger(channels);
 	merger.channelInterpretation = "discrete";
+	const masterOut = needsAll && req.masterInsert ? req.masterInsert(ctx, mixer.output) : mixer.output;
 	group.forEach((o, k) => {
 		const split = ctx.createChannelSplitter(2);
-		(o.kind === "master" ? mixer.output : o.processed ? mixer.processedTap(o.voice) : mixer.dryTap(o.voice)).connect(split);
+		(o.kind === "master" ? masterOut : o.processed ? mixer.processedTap(o.voice) : mixer.dryTap(o.voice)).connect(split);
 		split.connect(merger, 0, 2 * k);
 		split.connect(merger, 1, 2 * k + 1);
 	});
@@ -105,9 +106,12 @@ async function renderGroup(req, group, frames, sr, progress) {
 	ctx.destination.channelCountMode = "explicit";
 	ctx.destination.channelInterpretation = "discrete";
 	merger.connect(ctx.destination);
-	const player = new NotePlayer(ctx, mixer, req.resolve, { maxPerVoice: req.maxPerVoice });
+	const player = new NotePlayer(ctx, mixer, req.resolve, {
+		maxPerVoice: req.maxPerVoice,
+		choke: req.choke
+	});
 	const tm = new TimeMap(req.timeline.tempo);
-	const events = req.timeline.events.filter((e) => needed.has(e.voice));
+	const events = req.choke ? req.timeline.events : req.timeline.events.filter((e) => needed.has(e.voice));
 	let next = 0;
 	let cancelled = false;
 	const schedule = (until) => {
@@ -119,16 +123,21 @@ async function renderGroup(req, group, frames, sr, progress) {
 			if (cancelled) continue;
 			if (e.type === "note") {
 				const n = e;
-				const key = `n${next}`;
-				player.noteOn(key, n.voice, {
+				const note = {
 					time: t,
 					pitch: n.pitch,
 					velocity: n.velocity,
 					channel: n.channel,
 					instrument: n.instrument
-				});
+				};
+				if (!needed.has(n.voice)) {
+					player.chokeOnly(n.voice, note);
+					continue;
+				}
+				const key = `n${next}`;
+				player.noteOn(key, n.voice, note);
 				player.noteOff(key, tm.seconds(n.tick + n.duration));
-			} else req.onControl?.(e, t, mixer);
+			} else if (needed.has(e.voice)) req.onControl?.(e, t, mixer);
 		}
 	};
 	const quantum = 128 / sr;
@@ -141,6 +150,7 @@ async function renderGroup(req, group, frames, sr, progress) {
 			if (req.signal?.aborted && !cancelled) {
 				cancelled = true;
 				mixer.output.disconnect();
+				masterOut.disconnect();
 				for (const o of group) if (o.kind === "stem") (o.processed ? mixer.processedTap(o.voice) : mixer.dryTap(o.voice)).disconnect();
 			}
 			schedule(at + chunk);

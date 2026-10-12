@@ -3,7 +3,8 @@
 Slop Factory Core is shared infrastructure for browser music applications: the event model,
 audio routing, the sampler, output processing, sample transformations, offline rendering,
 WAV/ZIP export and sample storage. It was developed inside ANVIL (`src/core/`) and extracted
-into this repository as `@slopfactory/core` 0.1.0.
+into this repository as `@slopfactory/core` 0.1.0. Version 0.2.0 added choke groups (for
+DOWNBEAT), an application master insert for offline renders, and fixed fades scheduled ahead.
 
 ## 1. Modules and boundaries
 
@@ -128,7 +129,14 @@ instrument notes -> voice input -> voice processing -> voice gain -> pan -> mute
 
 The `Mixer` builds this graph on any `BaseAudioContext`. Applications may insert their own
 nodes after `mixer.output` (DOWNBEAT keeps its existing master compressor there); such nodes
-are outside Core and are applied only where the application connects them.
+are outside Core. For offline renders, `RenderRequest.masterInsert(ctx, master)` builds the
+same nodes in the render's context; they are applied to the master output only, never to
+stems.
+
+**Fades.** Instruments fade notes out (release, voice stealing, chokes, panic) from the level
+the note has at that moment. `GainEnvelope` records what an instrument scheduled on a gain
+parameter, and `fadeOut()` anchors each fade with an explicit value at its start time, so a
+fade scheduled ahead (always the case offline) starts exactly when it should.
 
 ## 4. Rendering and stems
 
@@ -150,7 +158,35 @@ application that wants stems grouped another way (DOWNBEAT's drum-sound stems) r
 second timeline whose voice ids are the new groups. The events are the same; only the
 `voice` field (the routing key) differs.
 
-## 5. Storage
+## 5. Choke groups
+
+A note can belong to a **choke group**. When a note of a group starts, it cuts the sounding
+notes of that group (an open hat stopped by a closed hat), on any voice, with a short
+anti-click fade, before it starts itself.
+
+```ts
+interface ChokeSettings { group: string; cuts?: boolean; cutBy?: boolean; fade?: number }
+new NotePlayer(ctx, mixer, resolve, { choke: (voice, note) => settingsFor(note.instrument) });
+renderTimeline({ ..., choke: sameFunction });
+```
+
+* **Opt-in.** Notes with no group (the resolver returns `null`, or there is no resolver) are
+  never cut and never cut anything. ANVIL assigns no groups, so its sound is unchanged.
+* **Configurable.** `cuts` (default true): this note cuts its group. `cutBy` (default true):
+  this note can be cut. A one-way choke (closed cuts open, open never cuts closed) is
+  `{ cutBy: false }` on the closed hat and `{ cuts: false }` on the open hat. With both true,
+  a sound retriggered in its own group cuts its previous hit. `fade` (default 5 ms) is the fade
+  given to the notes it cuts; each instrument applies it in its own way (the sampler: linear).
+* **Ownership.** A cut note keeps its voice: it fades inside its own voice's strip and stem.
+  Groups are not tied to voices.
+* **Timing.** Only notes that started *before* the cutting note are cut; notes starting at the
+  same instant both play. Notes that have already ended are untouched.
+* **Live and offline.** The same `NotePlayer` code runs in both. Offline renders that hold
+  only some stems still apply chokes from every voice (`chokeOnly`), so a stem rendered on its
+  own is cut exactly as in the full render. Browser tests compare a live recording with the
+  offline render of the same notes (`e2e/choke.spec.ts`).
+
+## 6. Storage
 
 ```ts
 interface SampleStore { put; get; has; delete; list }   // IndexedDbSampleStore, MemorySampleStore
@@ -162,7 +198,7 @@ Projects refer to samples by id; audio never goes into project JSON. Bundles are
 `manifest.json`, the application's project file and each sample once; hashes are checked on
 import and problems are reported without blocking the project.
 
-## 6. Determinism
+## 7. Determinism
 
 * Musical determinism belongs to the application: it freezes its performance into a Timeline
   (ANVIL's `freezePerformance` reproduces START exactly; DOWNBEAT's `renderCycles` does the same
@@ -175,16 +211,15 @@ import and problems are reported without blocking the project.
   browser tests assert exactly that bound.
 
 
-## 7. Licensing and provenance
+## 8. Licensing and provenance
 
 Core is MIT, like ANVIL, DOWNBEAT and The Good Bits (same author). Vendored Good Bits files keep
 their upstream bytes; `vendor.json` records the commit and per-file SHA-256, and
 `test/vendor.test.ts` fails if a vendored file drifts. See `docs/GOOD-BITS-DSP.md`.
 
-## 8. Known limitations
+## 9. Known limitations
 
-* No choke groups, no multi-sample zones (one sample per instrument), no sample-start
-  modulation: DOWNBEAT will need choke groups (planned).
+* No multi-sample zones (one sample per instrument), no sample-start modulation.
 * Output processing is not oversampled; crunch aliasing is intentional, drive aliasing is not
   filtered.
 * Output-stage modes allocate per sample (Good Bits' closure interface); many simultaneous

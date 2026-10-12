@@ -1,6 +1,5 @@
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/characters.js
-/** Macro-control metadata. Every macro is a 0-100 slider that is a no-op (factor 1) at its default. */
-var MACROS = {
+var e = {
 	texture: {
 		label: "Grain size",
 		hint: "Smaller = fine grain buzz, larger = smoother blur.",
@@ -32,55 +31,32 @@ var MACROS = {
 		default: 50
 	}
 };
-function macroFactor(macroValues, key) {
-	const v = macroValues && typeof macroValues[key] === "number" ? macroValues[key] : MACROS[key].default;
-	return Math.max(0, Math.min(2, v / 50));
+function t(t, n) {
+	let r = t && typeof t[n] == "number" ? t[n] : e[n].default;
+	return Math.max(0, Math.min(2, r / 50));
 }
-function applyGranularMacros(params, macroValues) {
-	const texture = macroFactor(macroValues, "texture");
-	const variation = macroFactor(macroValues, "variation");
-	const out = { ...params };
-	out.grainMs = Math.max(6, params.grainMs * texture);
-	out.posJitterMs = (params.posJitterMs || 0) * variation;
-	out.timeJitterMs = (params.timeJitterMs || 0) * variation;
-	out.pitchJitterCents = (params.pitchJitterCents || 0) * variation;
-	out.reverseProb = Math.max(0, Math.min(.95, (params.reverseProb || 0) * variation));
-	out.dropoutProb = Math.max(0, Math.min(.85, (params.dropoutProb || 0) * variation));
-	return out;
+function n(e, n) {
+	let r = t(n, "texture"), i = t(n, "variation"), a = { ...e };
+	return a.grainMs = Math.max(6, e.grainMs * r), a.posJitterMs = (e.posJitterMs || 0) * i, a.timeJitterMs = (e.timeJitterMs || 0) * i, a.pitchJitterCents = (e.pitchJitterCents || 0) * i, a.reverseProb = Math.max(0, Math.min(.95, (e.reverseProb || 0) * i)), a.dropoutProb = Math.max(0, Math.min(.85, (e.dropoutProb || 0) * i)), a;
 }
-function applySpectralMacros(params, macroValues) {
-	const smear = macroFactor(macroValues, "smear");
-	const out = { ...params };
-	if (typeof out.smear === "number") out.smear = Math.max(0, Math.min(1, out.smear * smear));
-	if (typeof out.phaseRandomize === "number") out.phaseRandomize = Math.max(0, Math.min(1, out.phaseRandomize * smear));
-	if (typeof out.holdMs === "number") out.holdMs = Math.max(40, out.holdMs * smear);
-	return out;
+function r(e, n) {
+	let r = t(n, "smear"), i = { ...e };
+	return typeof i.smear == "number" && (i.smear = Math.max(0, Math.min(1, i.smear * r))), typeof i.phaseRandomize == "number" && (i.phaseRandomize = Math.max(0, Math.min(1, i.phaseRandomize * r))), typeof i.holdMs == "number" && (i.holdMs = Math.max(40, i.holdMs * r)), i;
 }
-function applyOldDigitalMacros(params, macroValues) {
-	const roughness = macroFactor(macroValues, "roughness");
-	const out = { ...params };
-	if (typeof out.windowMs === "number") out.windowMs = Math.max(4, out.windowMs / Math.max(.4, roughness));
-	if (typeof out.bitDepth === "number") out.bitDepth = Math.max(1, Math.min(16, Math.round(out.bitDepth / Math.max(.35, roughness))));
-	if (typeof out.searchMs === "number") out.searchMs = Math.max(0, out.searchMs / Math.max(.5, roughness));
-	if (typeof out.repeatJitter === "number") out.repeatJitter = Math.max(0, Math.min(1, out.repeatJitter + Math.max(0, roughness - 1)));
-	if (typeof out.chunkMs === "number") out.chunkMs = Math.max(8, out.chunkMs / Math.max(.4, roughness));
-	return out;
+function i(e, n) {
+	let r = t(n, "roughness"), i = { ...e };
+	return typeof i.windowMs == "number" && (i.windowMs = Math.max(4, i.windowMs / Math.max(.4, r))), typeof i.bitDepth == "number" && (i.bitDepth = Math.max(1, Math.min(16, Math.round(i.bitDepth / Math.max(.35, r))))), typeof i.searchMs == "number" && (i.searchMs = Math.max(0, i.searchMs / Math.max(.5, r))), typeof i.repeatJitter == "number" && (i.repeatJitter = Math.max(0, Math.min(1, i.repeatJitter + Math.max(0, r - 1)))), typeof i.chunkMs == "number" && (i.chunkMs = Math.max(8, i.chunkMs / Math.max(.4, r))), i;
 }
-function applyCyclicMacros(params, macroValues) {
-	const out = { ...params };
-	const cycleV = macroValues && typeof macroValues.cycle === "number" ? macroValues.cycle : MACROS.cycle.default;
-	out.cycleMs = Math.max(3, params.cycleMs * Math.pow(2, (cycleV - 50) / 25));
-	out.crossfade = Math.max(0, Math.min(.5, params.crossfade * macroFactor(macroValues, "crossfade")));
-	return out;
+function a(n, r) {
+	let i = { ...n }, a = r && typeof r.cycle == "number" ? r.cycle : e.cycle.default;
+	return i.cycleMs = Math.max(3, n.cycleMs * 2 ** ((a - 50) / 25)), i.crossfade = Math.max(0, Math.min(.5, n.crossfade * t(r, "crossfade"))), i;
 }
-var MACRO_APPLIERS = {
-	granular: applyGranularMacros,
-	spectral: applySpectralMacros,
-	oldDigital: applyOldDigitalMacros,
-	cyclic: applyCyclicMacros
-};
-/** Character registry. `params` are the engine's own defaults; `macros` (if present) name which macro sliders apply and which family's mapping resolves them. */
-var CHARACTERS = {
+var o = {
+	granular: n,
+	spectral: r,
+	oldDigital: i,
+	cyclic: a
+}, s = {
 	clean: {
 		label: "Clean",
 		group: "clean",
@@ -113,9 +89,9 @@ var CHARACTERS = {
 		params: {
 			fftMs: 40,
 			overlap: 4,
-			phaseLocking: true,
+			phaseLocking: !0,
 			phaseRandomize: 0,
-			transientReset: true,
+			transientReset: !0,
 			transientSensitivity: .5
 		}
 	},
@@ -127,9 +103,9 @@ var CHARACTERS = {
 		params: {
 			fftMs: 20,
 			overlap: 3,
-			phaseLocking: true,
+			phaseLocking: !0,
 			phaseRandomize: 0,
-			transientReset: true,
+			transientReset: !0,
 			transientSensitivity: .8
 		}
 	},
@@ -146,7 +122,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		legacy: true
+		legacy: !0
 	},
 	loose: {
 		label: "Loose",
@@ -189,7 +165,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		legacy: true
+		legacy: !0
 	},
 	warped: {
 		label: "Warped",
@@ -204,7 +180,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		legacy: true
+		legacy: !0
 	},
 	crushed: {
 		label: "Crushed",
@@ -219,7 +195,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		legacy: true
+		legacy: !0
 	},
 	stutter: {
 		label: "Stutter",
@@ -234,7 +210,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		usesSeed: true
+		usesSeed: !0
 	},
 	cheap93: {
 		label: "'93",
@@ -249,7 +225,7 @@ var CHARACTERS = {
 		},
 		macros: ["roughness"],
 		macroFamily: "oldDigital",
-		usesSeed: true
+		usesSeed: !0
 	},
 	cyclic: {
 		label: "Cyclic",
@@ -294,7 +270,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	scatter: {
 		label: "Scatter",
@@ -313,7 +289,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	flutter: {
 		label: "Flutter",
@@ -332,7 +308,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	shred: {
 		label: "Shred",
@@ -351,7 +327,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	cloud: {
 		label: "Cloud",
@@ -370,7 +346,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	nervous: {
 		label: "Nervous",
@@ -389,7 +365,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	broken: {
 		label: "Broken",
@@ -408,7 +384,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	phase: {
 		label: "Phase",
@@ -418,13 +394,13 @@ var CHARACTERS = {
 		params: {
 			fftMs: 46,
 			overlap: 4,
-			phaseLocking: false,
+			phaseLocking: !1,
 			phaseRandomize: .15,
-			transientReset: false
+			transientReset: !1
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	underwater: {
 		label: "Underwater",
@@ -434,13 +410,13 @@ var CHARACTERS = {
 		params: {
 			fftMs: 110,
 			overlap: 8,
-			phaseLocking: false,
+			phaseLocking: !1,
 			phaseRandomize: .55,
-			transientReset: false
+			transientReset: !1
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	metallic: {
 		label: "Metallic",
@@ -450,13 +426,13 @@ var CHARACTERS = {
 		params: {
 			fftMs: 6,
 			overlap: 3,
-			phaseLocking: false,
+			phaseLocking: !1,
 			phaseRandomize: .2,
-			transientReset: false
+			transientReset: !1
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	glass: {
 		label: "Glass",
@@ -466,13 +442,13 @@ var CHARACTERS = {
 		params: {
 			fftMs: 60,
 			overlap: 4,
-			phaseLocking: true,
+			phaseLocking: !0,
 			phaseRandomize: .1,
-			transientReset: false
+			transientReset: !1
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	frozen: {
 		label: "Frozen",
@@ -512,7 +488,7 @@ var CHARACTERS = {
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	infinite: {
 		label: "Infinite",
@@ -526,7 +502,7 @@ var CHARACTERS = {
 		},
 		macros: ["smear"],
 		macroFamily: "spectral",
-		usesSeed: true
+		usesSeed: !0
 	},
 	destroyed: {
 		label: "Destroyed",
@@ -546,7 +522,7 @@ var CHARACTERS = {
 		},
 		macros: ["texture", "variation"],
 		macroFamily: "granular",
-		usesSeed: true
+		usesSeed: !0
 	},
 	tape: {
 		label: "Tape",
@@ -554,1173 +530,720 @@ var CHARACTERS = {
 		engine: "varispeed",
 		description: "Pitch follows speed, like tape or a sampler played at the wrong rate.",
 		params: {},
-		preservesPitch: false
+		preservesPitch: !1
 	}
 };
-/** Look up a character by id, falling back to "clean" for anything unrecognised (old saved settings, typos, ...). */
-function resolveCharacter(key) {
-	return CHARACTERS[key] || CHARACTERS.clean;
+function c(e) {
+	return s[e] || s.clean;
 }
-/** Resolve a character's engine params with its macro sliders (if any) applied. macroValues is a flat {texture, variation, smear, roughness} map - only the keys the character actually uses are read. */
-function resolveCharacterParams(character, macroValues) {
-	if (!character.macros || !character.macros.length) return { ...character.params };
-	const applier = MACRO_APPLIERS[character.macroFamily];
-	return applier ? applier(character.params, macroValues) : { ...character.params };
+function l(e, t) {
+	if (!e.macros || !e.macros.length) return { ...e.params };
+	let n = o[e.macroFamily];
+	return n ? n(e.params, t) : { ...e.params };
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp.js
-/** Apply a linear fade-in/out in place to a set of per-channel Float32Arrays. */
-function applyFades(channels, fadeInSamples, fadeOutSamples) {
-	for (const ch of channels) {
-		const n = ch.length;
-		const fi = Math.min(fadeInSamples, Math.floor(n / 2));
-		const fo = Math.min(fadeOutSamples, Math.floor(n / 2));
-		for (let i = 0; i < fi; i++) ch[i] *= i / fi;
-		for (let i = 0; i < fo; i++) ch[n - 1 - i] *= i / fo;
+function u(e, t, n) {
+	for (let r of e) {
+		let e = r.length, i = Math.min(t, Math.floor(e / 2)), a = Math.min(n, Math.floor(e / 2));
+		for (let e = 0; e < i; e++) r[e] *= e / i;
+		for (let t = 0; t < a; t++) r[e - 1 - t] *= t / a;
 	}
 }
-/** Downmix any number of channels to mono by averaging. */
-function toMono(channels) {
-	const n = channels[0].length;
-	if (channels.length === 1) return channels[0];
-	const out = new Float32Array(n);
-	for (let i = 0; i < n; i++) {
-		let sum = 0;
-		for (const ch of channels) sum += ch[i];
-		out[i] = sum / channels.length;
+function d(e) {
+	let t = e[0].length;
+	if (e.length === 1) return e[0];
+	let n = new Float32Array(t);
+	for (let r = 0; r < t; r++) {
+		let t = 0;
+		for (let n of e) t += n[r];
+		n[r] = t / e.length;
 	}
-	return out;
+	return n;
 }
-/** Simple linear-interpolation resampler, good enough for analysis use. */
-function resampleLinear(mono, fromRate, toRate) {
-	if (fromRate === toRate) return mono;
-	const ratio = toRate / fromRate;
-	const outLen = Math.max(1, Math.round(mono.length * ratio));
-	const out = new Float32Array(outLen);
-	for (let i = 0; i < outLen; i++) {
-		const srcPos = i / ratio;
-		const i0 = Math.floor(srcPos);
-		const i1 = Math.min(mono.length - 1, i0 + 1);
-		const frac = srcPos - i0;
-		out[i] = mono[i0] * (1 - frac) + mono[i1] * frac;
+function f(e, t, n) {
+	if (t === n) return e;
+	let r = n / t, i = Math.max(1, Math.round(e.length * r)), a = new Float32Array(i);
+	for (let t = 0; t < i; t++) {
+		let n = t / r, i = Math.floor(n), o = Math.min(e.length - 1, i + 1), s = n - i;
+		a[t] = e[i] * (1 - s) + e[o] * s;
 	}
-	return out;
+	return a;
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/windows.js
-function hannWindow(n) {
-	const w = new Float32Array(n);
-	for (let i = 0; i < n; i++) w[i] = .5 - .5 * Math.cos(2 * Math.PI * i / Math.max(1, n - 1));
-	return w;
+function p(e) {
+	let t = new Float32Array(e);
+	for (let n = 0; n < e; n++) t[n] = .5 - .5 * Math.cos(2 * Math.PI * n / Math.max(1, e - 1));
+	return t;
 }
-function triangularWindow(n) {
-	const w = new Float32Array(n);
-	const half = (n - 1) / 2;
-	for (let i = 0; i < n; i++) w[i] = 1 - Math.abs((i - half) / Math.max(1, half));
-	return w;
+function m(e) {
+	let t = new Float32Array(e), n = (e - 1) / 2;
+	for (let r = 0; r < e; r++) t[r] = 1 - Math.abs((r - n) / Math.max(1, n));
+	return t;
 }
-/** Flat-top-ish rectangular window with a short raised-cosine taper at each edge, just enough to avoid a hard click. */
-function rectTaperWindow(n, taperFraction = .08) {
-	const w = new Float32Array(n).fill(1);
-	const taper = Math.max(1, Math.round(n * taperFraction));
-	for (let i = 0; i < taper; i++) {
-		const g = .5 - .5 * Math.cos(Math.PI * i / taper);
-		w[i] = g;
-		w[n - 1 - i] = g;
+function h(e, t = .08) {
+	let n = new Float32Array(e).fill(1), r = Math.max(1, Math.round(e * t));
+	for (let t = 0; t < r; t++) {
+		let i = .5 - .5 * Math.cos(Math.PI * t / r);
+		n[t] = i, n[e - 1 - t] = i;
 	}
-	return w;
+	return n;
 }
-var CACHE = /* @__PURE__ */ new Map();
-/** Cached window lookup by (shape, length) - the STFT-style engines rebuild windows often at a handful of fixed sizes. */
-function getWindow(shape, n) {
-	const key = `${shape}:${n}`;
-	let w = CACHE.get(key);
-	if (!w) {
-		w = shape === "tri" ? triangularWindow(n) : shape === "rect" ? rectTaperWindow(n) : hannWindow(n);
-		CACHE.set(key, w);
-	}
-	return w;
+var g = /* @__PURE__ */ new Map();
+function _(e, t) {
+	let n = `${e}:${t}`, r = g.get(n);
+	return r || (r = e === "tri" ? m(t) : e === "rect" ? h(t) : p(t), g.set(n, r)), r;
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/wsola.js
-/** A window's own energy (sum of squares) - split out of similarity() below so the search loop can
-* compute it once per grain instead of redundantly recomputing the same value for every candidate
-* offset scored against that grain's fixed reference window. */
-function energy(ref, len) {
-	let sum = 0;
-	for (let i = 0; i < len; i++) {
-		const x = ref[i] || 0;
-		sum += x * x;
+function v(e, t) {
+	let n = 0;
+	for (let r = 0; r < t; r++) {
+		let t = e[r] || 0;
+		n += t * t;
 	}
-	return sum;
+	return n;
 }
-/**
-* Normalized cross-correlation between a reference window and a candidate window, for splice-point
-* search. `refEnergy` is `energy(ref, len)`, passed in rather than recomputed here: this is called
-* once per candidate offset in the search loop below (up to ~searchRadius*2 times per grain) against
-* the SAME reference window every time, so hoisting that one term out is a pure, exact win - it's
-* the same value, just computed once per grain instead of once per candidate.
-*/
-function similarity(ref, refEnergy, cand, candOff, len) {
-	let dot = 0;
-	let nc = 0;
-	for (let i = 0; i < len; i++) {
-		const x = ref[i] || 0;
-		const y = cand[candOff + i] || 0;
-		dot += x * y;
-		nc += y * y;
+function y(e, t, n, r, i) {
+	let a = 0, o = 0;
+	for (let t = 0; t < i; t++) {
+		let i = e[t] || 0, s = n[r + t] || 0;
+		a += i * s, o += s * s;
 	}
-	const denom = Math.sqrt(refEnergy * nc);
-	return denom > 1e-9 ? dot / denom : 0;
+	let s = Math.sqrt(t * o);
+	return s > 1e-9 ? a / s : 0;
 }
-/** Crude bit-depth reduction - old samplers' ADCs were low-bit, so this is part of several "old digital" characters. */
-function quantizeInPlace(buf, bits) {
-	const step = 2 / Math.pow(2, bits);
-	for (let i = 0; i < buf.length; i++) buf[i] = Math.round(buf[i] / step) * step;
+function b(e, t) {
+	let n = 2 / 2 ** t;
+	for (let t = 0; t < e.length; t++) e[t] = Math.round(e[t] / n) * n;
 }
-/**
-* Time-stretch every channel in lockstep (grain positions are decided once
-* from a mono reference, then applied identically to each channel) so
-* multi-channel audio stays phase-aligned instead of each channel drifting
-* independently. ratio = output length / input length. Pitch is preserved
-* (approximately - WSOLA isn't phase-exact, but it's a solid, well
-* established approach for exactly this).
-*
-* params: { windowMs, searchMs, hopFraction, bitDepth }
-*/
-function stretchWsola(channels, sampleRate, ratio, params) {
-	const p = params || {};
-	const windowMs = p.windowMs ?? 46;
-	const searchMs = p.searchMs ?? 14;
-	const hopFraction = p.hopFraction ?? .5;
-	const bitDepth = p.bitDepth ?? null;
-	if (Math.abs(ratio - 1) < 1e-6) return channels.map((ch) => Float32Array.from(ch));
-	const reference = channels.length > 1 ? toMono(channels) : channels[0];
-	const inputLen = reference.length;
-	const windowSize = Math.max(64, Math.round(windowMs / 1e3 * sampleRate));
-	const synthesisHop = Math.max(1, Math.round(windowSize * hopFraction));
-	Math.max(1, Math.round(synthesisHop / ratio));
-	const searchRadius = Math.max(0, Math.round(searchMs / 1e3 * sampleRate));
-	const window = hannWindow(windowSize);
-	const outLen = Math.max(windowSize, Math.round(inputLen * ratio));
-	const grains = [];
-	let synthesisPos = 0;
-	let prevTail = null;
-	const maxGrainStart = Math.max(0, inputLen - windowSize);
-	while (synthesisPos < outLen) {
-		const idealStart = Math.min(maxGrainStart, Math.round(synthesisPos / ratio));
-		let bestOffset = 0;
-		if (searchRadius > 0 && prevTail) {
-			let bestScore = -Infinity;
-			const overlapLen = Math.min(windowSize, prevTail.length);
-			const refEnergy = energy(prevTail, overlapLen);
-			const lo = Math.max(0, idealStart - searchRadius);
-			const hi = Math.min(Math.max(lo, maxGrainStart), idealStart + searchRadius);
-			for (let cand = lo; cand <= hi; cand++) {
-				const score = similarity(prevTail, refEnergy, reference, cand, overlapLen);
-				if (score > bestScore) {
-					bestScore = score;
-					bestOffset = cand - idealStart;
-				}
+function x(e, t, n, r) {
+	let i = r || {}, a = i.windowMs ?? 46, o = i.searchMs ?? 14, s = i.hopFraction ?? .5, c = i.bitDepth ?? null;
+	if (Math.abs(n - 1) < 1e-6) return e.map((e) => Float32Array.from(e));
+	let l = e.length > 1 ? d(e) : e[0], u = l.length, f = Math.max(64, Math.round(a / 1e3 * t)), m = Math.max(1, Math.round(f * s));
+	Math.max(1, Math.round(m / n));
+	let h = Math.max(0, Math.round(o / 1e3 * t)), g = p(f), _ = Math.max(f, Math.round(u * n)), x = [], S = 0, C = null, w = Math.max(0, u - f);
+	for (; S < _;) {
+		let e = Math.min(w, Math.round(S / n)), t = 0;
+		if (h > 0 && C) {
+			let n = -Infinity, r = Math.min(f, C.length), i = v(C, r), a = Math.max(0, e - h), o = Math.min(Math.max(a, w), e + h);
+			for (let s = a; s <= o; s++) {
+				let a = y(C, i, l, s, r);
+				a > n && (n = a, t = s - e);
 			}
 		}
-		const grainStart = Math.max(0, Math.min(maxGrainStart, idealStart + bestOffset));
-		grains.push({
-			grainStart,
-			synthesisPos
+		let r = Math.max(0, Math.min(w, e + t));
+		x.push({
+			grainStart: r,
+			synthesisPos: S
 		});
-		const tailLen = Math.min(windowSize, synthesisHop);
-		prevTail = reference.slice(grainStart + windowSize - tailLen, grainStart + windowSize);
-		synthesisPos += synthesisHop;
+		let i = Math.min(f, m);
+		C = l.slice(r + f - i, r + f), S += m;
 	}
-	return channels.map((chan) => {
-		const out = new Float32Array(outLen + windowSize);
-		const weight = new Float32Array(outLen + windowSize);
-		for (const { grainStart, synthesisPos: sp } of grains) for (let i = 0; i < windowSize; i++) {
-			const s = chan[grainStart + i] || 0;
-			out[sp + i] += s * window[i];
-			weight[sp + i] += window[i];
+	return e.map((e) => {
+		let t = new Float32Array(_ + f), n = new Float32Array(_ + f);
+		for (let { grainStart: r, synthesisPos: i } of x) for (let a = 0; a < f; a++) {
+			let o = e[r + a] || 0;
+			t[i + a] += o * g[a], n[i + a] += g[a];
 		}
-		const result = new Float32Array(outLen);
-		for (let i = 0; i < outLen; i++) result[i] = weight[i] > 1e-6 ? out[i] / weight[i] : out[i];
-		if (bitDepth) quantizeInPlace(result, bitDepth);
-		return result;
+		let r = new Float32Array(_);
+		for (let e = 0; e < _; e++) r[e] = n[e] > 1e-6 ? t[e] / n[e] : t[e];
+		return c && b(r, c), r;
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/fft.js
-/** Smallest power of two >= n (minimum 1). */
-function nextPow2(n) {
-	let p = 1;
-	while (p < n) p <<= 1;
-	return p;
+function S(e) {
+	let t = 1;
+	for (; t < e;) t <<= 1;
+	return t;
 }
-function bitReversePermute(re, im) {
-	const n = re.length;
-	for (let i = 1, j = 0; i < n; i++) {
-		let bit = n >> 1;
-		for (; j & bit; bit >>= 1) j ^= bit;
-		j ^= bit;
-		if (i < j) {
-			let t = re[i];
-			re[i] = re[j];
-			re[j] = t;
-			t = im[i];
-			im[i] = im[j];
-			im[j] = t;
+function C(e, t) {
+	let n = e.length;
+	for (let r = 1, i = 0; r < n; r++) {
+		let a = n >> 1;
+		for (; i & a; a >>= 1) i ^= a;
+		if (i ^= a, r < i) {
+			let n = e[r];
+			e[r] = e[i], e[i] = n, n = t[r], t[r] = t[i], t[i] = n;
 		}
 	}
 }
-/** In-place forward FFT. re/im must be the same power-of-two length. */
-function fft(re, im) {
-	const n = re.length;
-	if (n <= 1) return;
-	bitReversePermute(re, im);
-	for (let len = 2; len <= n; len <<= 1) {
-		const half = len >> 1;
-		const ang = -2 * Math.PI / len;
-		const wr = Math.cos(ang);
-		const wi = Math.sin(ang);
-		for (let i = 0; i < n; i += len) {
-			let curWr = 1;
-			let curWi = 0;
-			for (let j = 0; j < half; j++) {
-				const a = i + j;
-				const b = a + half;
-				const bRe = re[b] * curWr - im[b] * curWi;
-				const bIm = re[b] * curWi + im[b] * curWr;
-				const aRe = re[a];
-				const aIm = im[a];
-				re[a] = aRe + bRe;
-				im[a] = aIm + bIm;
-				re[b] = aRe - bRe;
-				im[b] = aIm - bIm;
-				const nextWr = curWr * wr - curWi * wi;
-				const nextWi = curWr * wi + curWi * wr;
-				curWr = nextWr;
-				curWi = nextWi;
+function w(e, t) {
+	let n = e.length;
+	if (!(n <= 1)) {
+		C(e, t);
+		for (let r = 2; r <= n; r <<= 1) {
+			let i = r >> 1, a = -2 * Math.PI / r, o = Math.cos(a), s = Math.sin(a);
+			for (let a = 0; a < n; a += r) {
+				let n = 1, r = 0;
+				for (let c = 0; c < i; c++) {
+					let l = a + c, u = l + i, d = e[u] * n - t[u] * r, f = e[u] * r + t[u] * n, p = e[l], m = t[l];
+					e[l] = p + d, t[l] = m + f, e[u] = p - d, t[u] = m - f;
+					let h = n * o - r * s, g = n * s + r * o;
+					n = h, r = g;
+				}
 			}
 		}
 	}
 }
-/** In-place inverse FFT (normalized by n so fft() -> ifft() round-trips exactly). */
-function ifft(re, im) {
-	const n = re.length;
+function T(e, t) {
+	let n = e.length;
 	if (n <= 1) return;
-	for (let i = 0; i < n; i++) im[i] = -im[i];
-	fft(re, im);
-	const invN = 1 / n;
-	for (let i = 0; i < n; i++) {
-		re[i] *= invN;
-		im[i] = -im[i] * invN;
-	}
+	for (let e = 0; e < n; e++) t[e] = -t[e];
+	w(e, t);
+	let r = 1 / n;
+	for (let i = 0; i < n; i++) e[i] *= r, t[i] = -t[i] * r;
 }
-/** Wraps a phase (radians) into (-PI, PI]. */
-function wrapPhase(x) {
-	const twoPi = Math.PI * 2;
-	return x - twoPi * Math.floor((x + Math.PI) / twoPi);
+function E(e) {
+	let t = Math.PI * 2;
+	return e - t * Math.floor((e + Math.PI) / t);
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/rng.js
-function mulberry32(seed) {
-	let a = seed >>> 0;
-	return function next() {
-		a |= 0;
-		a = a + 1831565813 | 0;
-		let t = Math.imul(a ^ a >>> 15, 1 | a);
-		t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-		return ((t ^ t >>> 14) >>> 0) / 4294967296;
+function D(e) {
+	let t = e >>> 0;
+	return function() {
+		t |= 0, t = t + 1831565813 | 0;
+		let e = Math.imul(t ^ t >>> 15, 1 | t);
+		return e = e + Math.imul(e ^ e >>> 7, 61 | e) ^ e, ((e ^ e >>> 14) >>> 0) / 4294967296;
 	};
 }
-/** Hash any seed (number or string) down to a uint32 so callers can pass friendly seeds. */
-function hashSeed(seed) {
-	if (seed === void 0 || seed === null) return 1;
-	if (typeof seed === "number" && Number.isFinite(seed)) return seed >>> 0 || Math.abs(Math.floor(seed)) >>> 0 || 1;
-	let h = 2166136261;
-	const s = String(seed);
-	for (let i = 0; i < s.length; i++) {
-		h ^= s.charCodeAt(i);
-		h = Math.imul(h, 16777619);
-	}
-	return h >>> 0 || 1;
+function O(e) {
+	if (e == null) return 1;
+	if (typeof e == "number" && Number.isFinite(e)) return e >>> 0 || Math.abs(Math.floor(e)) >>> 0 || 1;
+	let t = 2166136261, n = String(e);
+	for (let e = 0; e < n.length; e++) t ^= n.charCodeAt(e), t = Math.imul(t, 16777619);
+	return t >>> 0 || 1;
 }
-/** Combine a base seed with an integer "context" (frame index, channel index, ...) into a new deterministic seed. */
-function deriveSeed(baseSeed, context) {
-	const base = hashSeed(baseSeed);
-	const ctx = context >>> 0 || 0;
-	return (Math.imul(base ^ ctx, 2654435761) ^ ctx << 13) >>> 0;
+function k(e, t) {
+	let n = O(e), r = t >>> 0 || 0;
+	return (Math.imul(n ^ r, 2654435761) ^ r << 13) >>> 0;
 }
-/**
-* A small deterministic RNG object. `seed` may be a number or string.
-* Every stretch engine that uses randomness derives its rng(s) from the same
-* seed input (see dsp/stretch/index.js), and - critically - reseeds per
-* channel with the SAME seed for decisions that must stay shared across L/R
-* (grain jitter, phase randomisation), so stereo material doesn't get torn
-* apart by independently-randomised channels.
-*/
-function makeRng(seed = 1) {
-	const next = mulberry32(hashSeed(seed));
+function A(e = 1) {
+	let t = D(O(e));
 	return {
-		next,
-		signed: () => next() * 2 - 1,
-		range: (lo, hi) => lo + next() * (hi - lo),
-		int: (n) => Math.min(n - 1, Math.floor(next() * n)),
-		bool: (p = .5) => next() < p
+		next: t,
+		signed: () => t() * 2 - 1,
+		range: (e, n) => e + t() * (n - e),
+		int: (e) => Math.min(e - 1, Math.floor(t() * e)),
+		bool: (e = .5) => t() < e
 	};
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/stft.js
-/** Analyse chan[pos .. pos+fftSize) (reading 0 past the array's ends), windowed, returning {mag, phase} for bins [0, half]. */
-function analyzeFrame(chan, pos, fftSize, window, half) {
-	const re = new Float64Array(fftSize);
-	const im = new Float64Array(fftSize);
-	for (let i = 0; i < fftSize; i++) re[i] = (chan[pos + i] || 0) * window[i];
-	fft(re, im);
-	const mag = new Float64Array(half + 1);
-	const phase = new Float64Array(half + 1);
-	for (let k = 0; k <= half; k++) {
-		mag[k] = Math.hypot(re[k], im[k]);
-		phase[k] = Math.atan2(im[k], re[k]);
-	}
+function j(e, t, n, r, i) {
+	let a = new Float64Array(n), o = new Float64Array(n);
+	for (let i = 0; i < n; i++) a[i] = (e[t + i] || 0) * r[i];
+	w(a, o);
+	let s = new Float64Array(i + 1), c = new Float64Array(i + 1);
+	for (let e = 0; e <= i; e++) s[e] = Math.hypot(a[e], o[e]), c[e] = Math.atan2(o[e], a[e]);
 	return {
-		mag,
-		phase
+		mag: s,
+		phase: c
 	};
 }
-/**
-* Analysis/synthesis hop sizes for an STFT stretch at `ratio`. The classic scheme fixes the analysis
-* hop at fftSize/hopDivisor and scales the synthesis hop by the ratio - fine for modest stretches,
-* but once ratio outgrows the overlap the synthesis frames stop touching and the output turns into
-* windowed blips separated by silence (Transient at 8x was ~50% silence, Infinite at 40x ~80%). So
-* the synthesis hop is capped at half a frame, and past that point the ANALYSIS hop shrinks instead
-* (fractionally - callers floor m*Ha to an integer read position, which can repeat a frame at huge
-* ratios). Below the cap this returns exactly the old integer hops, so existing renders are unchanged.
-*/
-function planHops(fftSize, hopDivisor, ratio) {
-	const Ha = Math.max(1, Math.round(fftSize / hopDivisor));
-	const Hs = Math.max(1, Math.round(Ha * ratio));
-	const maxHs = Math.floor(fftSize / 2);
-	if (Hs <= maxHs) return {
-		Ha,
-		Hs
-	};
-	return {
-		Ha: maxHs / ratio,
-		Hs: maxHs
+function M(e, t, n) {
+	let r = Math.max(1, Math.round(e / t)), i = Math.max(1, Math.round(r * n)), a = Math.floor(e / 2);
+	return i <= a ? {
+		Ha: r,
+		Hs: i
+	} : {
+		Ha: a / n,
+		Hs: a
 	};
 }
-/**
-* Divides an overlap-add accumulator by its weight accumulator, the last step of every STFT-based
-* engine here. The naive version (divide by weight, or by 0 below a tiny epsilon) blows up right at
-* the start/end of the output: those samples are covered by only one sparsely-overlapping frame, so
-* weight is tiny there (window^2 near a Hann window's zero edge) - and once phase has been changed
-* from what the analysis window actually produced (randomised phase, or any bin manipulation), the
-* reconstructed frame no longer reliably tapers to ~0 at its own edges the way the original windowed
-* segment did, so dividing a NOT-small numerator by a NEAR-ZERO denominator there produces huge
-* spikes rather than a small number. Flooring the divisor at a fraction of the buffer's peak weight
-* bounds that amplification instead: the few edge samples with too little overlap to trust fade in
-* relative to the floor rather than exploding, and every sample with normal overlap is unaffected
-* (its weight is already far above the floor).
-*/
-function normalizeOverlapAdd(out, weight, outLen, floorFraction = .15) {
-	let peakWeight = 0;
-	for (let i = 0; i < outLen; i++) if (weight[i] > peakWeight) peakWeight = weight[i];
-	const floor = Math.max(1e-9, peakWeight * floorFraction);
-	const result = new Float32Array(outLen);
-	for (let i = 0; i < outLen; i++) result[i] = out[i] / Math.max(weight[i], floor);
-	return result;
+function N(e, t, n, r = .15) {
+	let i = 0;
+	for (let e = 0; e < n; e++) t[e] > i && (i = t[e]);
+	let a = Math.max(1e-9, i * r), o = new Float32Array(n);
+	for (let r = 0; r < n; r++) o[r] = e[r] / Math.max(t[r], a);
+	return o;
 }
-/**
-* Builds a full conjugate-symmetric spectrum in `re`/`im` (both length fftSize, overwritten in
-* place) from magnitude + phase over bins [0, half], so ifft() of the result comes out real-valued.
-*/
-function synthesizeSpectrum(re, im, mag, phase, fftSize, half) {
-	re[0] = mag[0];
-	im[0] = 0;
-	re[half] = mag[half];
-	im[half] = 0;
-	for (let k = 1; k < half; k++) {
-		re[k] = mag[k] * Math.cos(phase[k]);
-		im[k] = mag[k] * Math.sin(phase[k]);
-		re[fftSize - k] = re[k];
-		im[fftSize - k] = -im[k];
-	}
+function P(e, t, n, r, i, a) {
+	e[0] = n[0], t[0] = 0, e[a] = n[a], t[a] = 0;
+	for (let o = 1; o < a; o++) e[o] = n[o] * Math.cos(r[o]), t[o] = n[o] * Math.sin(r[o]), e[i - o] = e[o], t[i - o] = -t[o];
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/phase-vocoder.js
-/** Local maxima of `mag`, above a small fraction of the frame's own peak, used for identity phase locking. */
-function findPeaks(mag, half) {
-	let frameMax = 0;
-	for (let k = 0; k <= half; k++) if (mag[k] > frameMax) frameMax = mag[k];
-	const floor = frameMax * .02;
-	const peaks = [];
-	for (let k = 1; k < half; k++) if (mag[k] >= mag[k - 1] && mag[k] >= mag[k + 1] && mag[k] > floor) peaks.push(k);
-	if (peaks.length === 0) peaks.push(0);
-	return peaks;
+function F(e, t) {
+	let n = 0;
+	for (let r = 0; r <= t; r++) e[r] > n && (n = e[r]);
+	let r = n * .02, i = [];
+	for (let n = 1; n < t; n++) e[n] >= e[n - 1] && e[n] >= e[n + 1] && e[n] > r && i.push(n);
+	return i.length === 0 && i.push(0), i;
 }
-/** Which peak "owns" each bin (nearest peak, ties to the lower one), for identity phase locking. */
-function ownerForEachBin(peaks, half) {
-	const owner = new Int32Array(half + 1);
-	let pi = 0;
-	for (let k = 0; k <= half; k++) {
-		while (pi < peaks.length - 1 && Math.abs(peaks[pi + 1] - k) <= Math.abs(peaks[pi] - k)) pi++;
-		owner[k] = peaks[pi];
+function ee(e, t) {
+	let n = new Int32Array(t + 1), r = 0;
+	for (let i = 0; i <= t; i++) {
+		for (; r < e.length - 1 && Math.abs(e[r + 1] - i) <= Math.abs(e[r] - i);) r++;
+		n[i] = e[r];
 	}
-	return owner;
+	return n;
 }
-/** Spectral flux (positive-only) between two magnitude frames, used to flag transient frames. */
-function spectralFlux(mag, prevMag, half) {
-	let flux = 0;
-	for (let k = 0; k <= half; k++) flux += Math.max(0, mag[k] - (prevMag ? prevMag[k] : 0));
-	return flux;
+function I(e, t, n) {
+	let r = 0;
+	for (let i = 0; i <= n; i++) r += Math.max(0, e[i] - (t ? t[i] : 0));
+	return r;
 }
-/**
-* Runs analyzeFrame across every frame of `reference` up front. Returned alongside the flags so a
-* mono input (where `reference` IS the same array as the single channel the synthesis loop below
-* processes - see stretchPhaseVocoder) can reuse these already-computed spectra instead of running
-* an identical second FFT pass per frame for that channel. For stereo, `reference` is the mono
-* downmix - a different signal from either channel - so there's nothing to reuse there and this
-* costs the same as before.
-*/
-function analyzeReferenceFrames(reference, fftSize, hop, window, half, numFrames) {
-	const frames = new Array(numFrames);
-	for (let m = 0; m < numFrames; m++) frames[m] = analyzeFrame(reference, m * hop, fftSize, window, half);
-	return frames;
+function L(e, t, n, r, i, a) {
+	let o = Array(a);
+	for (let s = 0; s < a; s++) o[s] = j(e, s * n, t, r, i);
+	return o;
 }
-/** Frame indices (shared across channels) whose spectral flux is a sharp outlier vs. the running average. */
-function transientFlagsFromFrames(frames, half, numFrames, sensitivity) {
-	const fluxes = new Float64Array(numFrames);
-	let prevMag = null;
-	for (let m = 0; m < numFrames; m++) {
-		fluxes[m] = spectralFlux(frames[m].mag, prevMag, half);
-		prevMag = frames[m].mag;
-	}
-	const threshold = fluxes.reduce((a, b) => a + b, 0) / Math.max(1, numFrames) * (2.2 - 1.2 * sensitivity);
-	const flags = new Uint8Array(numFrames);
-	for (let m = 1; m < numFrames; m++) flags[m] = fluxes[m] > threshold && fluxes[m] > 1e-6 ? 1 : 0;
-	return flags;
+function te(e, t, n, r) {
+	let i = new Float64Array(n), a = null;
+	for (let r = 0; r < n; r++) i[r] = I(e[r].mag, a, t), a = e[r].mag;
+	let o = i.reduce((e, t) => e + t, 0) / Math.max(1, n) * (2.2 - 1.2 * r), s = new Uint8Array(n);
+	for (let e = 1; e < n; e++) s[e] = +(i[e] > o && i[e] > 1e-6);
+	return s;
 }
-/**
-* params: { fftMs, overlap, phaseLocking, phaseRandomize (0-1), transientReset, transientSensitivity (0-1) }
-*/
-function stretchPhaseVocoder(channels, sampleRate, ratio, params, seed) {
-	const p = params || {};
-	const fftSize = nextPow2(Math.max(64, Math.round((p.fftMs ?? 46) / 1e3 * sampleRate)));
-	const half = fftSize / 2;
-	const hopDivisor = Math.max(2, p.overlap ?? 4);
-	const { Ha, Hs } = planHops(fftSize, hopDivisor, ratio);
-	const gridHop = Math.max(1, Math.round(fftSize / hopDivisor));
-	const onGrid = Ha === gridHop;
-	const window = getWindow("hann", fftSize);
-	const phaseLocking = !!p.phaseLocking;
-	const phaseRandomize = Math.max(0, Math.min(1, p.phaseRandomize ?? 0));
-	const transientReset = !!p.transientReset;
-	const transientSensitivity = Math.max(0, Math.min(1, p.transientSensitivity ?? .5));
-	const reference = channels.length > 1 ? toMono(channels) : channels[0];
-	const inputLen = reference.length;
-	const outLen = Math.max(fftSize, Math.round(inputLen * ratio));
-	const numFrames = Math.max(1, Math.ceil(inputLen / Ha) + 1);
-	const numGridFrames = Math.max(1, Math.ceil(inputLen / gridHop) + 1);
-	const referenceFrames = transientReset ? analyzeReferenceFrames(reference, fftSize, gridHop, window, half, numGridFrames) : null;
-	const transientFlags = transientReset ? transientFlagsFromFrames(referenceFrames, half, numGridFrames, transientSensitivity) : null;
-	return channels.map((chan) => {
-		const rng = phaseRandomize > 0 ? makeRng(seed) : null;
-		const out = new Float64Array(outLen + fftSize);
-		const weight = new Float64Array(outLen + fftSize);
-		const outPhase = new Float64Array(half + 1);
-		let prevAnalysisPhase = null;
-		let prevAnalysisPos = 0;
-		let prevSynthesisPos = 0;
-		let prevGrid = -1;
-		let havePrev = false;
-		const trueFreq = new Float64Array(half + 1);
-		const synRe = new Float64Array(fftSize);
-		const synIm = new Float64Array(fftSize);
-		for (let m = 0; m < numFrames; m++) {
-			const analysisPos = Math.floor(m * Ha);
-			const synthesisPos = m * Hs;
-			if (synthesisPos > outLen + fftSize) break;
-			const { mag, phase } = onGrid && chan === reference && referenceFrames ? referenceFrames[m] : analyzeFrame(chan, analysisPos, fftSize, window, half);
-			const grid = Math.floor(analysisPos / gridHop);
-			const isTransient = transientFlags && grid !== prevGrid ? !!transientFlags[grid] : false;
-			prevGrid = grid;
-			if (!havePrev) {
-				for (let k = 0; k <= half; k++) outPhase[k] = phase[k];
-				havePrev = true;
-			} else if (isTransient) for (let k = 0; k <= half; k++) outPhase[k] = phase[k];
+function ne(e, t, n, r, i) {
+	let a = r || {}, o = S(Math.max(64, Math.round((a.fftMs ?? 46) / 1e3 * t))), s = o / 2, c = Math.max(2, a.overlap ?? 4), { Ha: l, Hs: u } = M(o, c, n), f = Math.max(1, Math.round(o / c)), p = l === f, m = _("hann", o), h = !!a.phaseLocking, g = Math.max(0, Math.min(1, a.phaseRandomize ?? 0)), v = !!a.transientReset, y = Math.max(0, Math.min(1, a.transientSensitivity ?? .5)), b = e.length > 1 ? d(e) : e[0], x = b.length, C = Math.max(o, Math.round(x * n)), w = Math.max(1, Math.ceil(x / l) + 1), D = Math.max(1, Math.ceil(x / f) + 1), O = v ? L(b, o, f, m, s, D) : null, k = v ? te(O, s, D, y) : null;
+	return e.map((e) => {
+		let t = g > 0 ? A(i) : null, n = new Float64Array(C + o), r = new Float64Array(C + o), a = new Float64Array(s + 1), c = null, d = 0, _ = 0, v = -1, y = !1, x = new Float64Array(s + 1), S = new Float64Array(o), D = new Float64Array(o);
+		for (let i = 0; i < w; i++) {
+			let w = Math.floor(i * l), A = i * u;
+			if (A > C + o) break;
+			let { mag: M, phase: N } = p && e === b && O ? O[i] : j(e, w, o, m, s), I = Math.floor(w / f), L = k && I !== v ? !!k[I] : !1;
+			if (v = I, !y) {
+				for (let e = 0; e <= s; e++) a[e] = N[e];
+				y = !0;
+			} else if (L) for (let e = 0; e <= s; e++) a[e] = N[e];
 			else {
-				const aStep = analysisPos - prevAnalysisPos;
-				const sStep = synthesisPos - prevSynthesisPos;
-				for (let k = 0; k <= half; k++) {
-					if (aStep > 0) {
-						const expected = 2 * Math.PI * k * aStep / fftSize;
-						const delta = wrapPhase(phase[k] - prevAnalysisPhase[k] - expected);
-						trueFreq[k] = 2 * Math.PI * k / fftSize + delta / aStep;
+				let e = w - d, t = A - _;
+				for (let n = 0; n <= s; n++) {
+					if (e > 0) {
+						let t = 2 * Math.PI * n * e / o, r = E(N[n] - c[n] - t);
+						x[n] = 2 * Math.PI * n / o + r / e;
 					}
-					outPhase[k] += trueFreq[k] * sStep;
+					a[n] += x[n] * t;
 				}
 			}
-			if (phaseLocking) {
-				const peaks = findPeaks(mag, half);
-				const owner = ownerForEachBin(peaks, half);
-				const peakOutPhase = new Float64Array(half + 1);
-				for (const pk of peaks) peakOutPhase[pk] = outPhase[pk];
-				for (let k = 0; k <= half; k++) {
-					const own = owner[k];
-					if (k !== own) outPhase[k] = peakOutPhase[own] + (phase[k] - phase[own]);
+			if (h) {
+				let e = F(M, s), t = ee(e, s), n = new Float64Array(s + 1);
+				for (let t of e) n[t] = a[t];
+				for (let e = 0; e <= s; e++) {
+					let r = t[e];
+					e !== r && (a[e] = n[r] + (N[e] - N[r]));
 				}
 			}
-			if (rng) for (let k = 1; k < half; k++) outPhase[k] += phaseRandomize * rng.signed() * Math.PI;
-			synthesizeSpectrum(synRe, synIm, mag, outPhase, fftSize, half);
-			ifft(synRe, synIm);
-			for (let i = 0; i < fftSize; i++) {
-				const s = synRe[i] * window[i];
-				out[synthesisPos + i] += s;
-				weight[synthesisPos + i] += window[i] * window[i];
+			if (t) for (let e = 1; e < s; e++) a[e] += g * t.signed() * Math.PI;
+			P(S, D, M, a, o, s), T(S, D);
+			for (let e = 0; e < o; e++) {
+				let t = S[e] * m[e];
+				n[A + e] += t, r[A + e] += m[e] * m[e];
 			}
-			prevAnalysisPhase = phase;
-			prevAnalysisPos = analysisPos;
-			prevSynthesisPos = synthesisPos;
+			c = N, d = w, _ = A;
 		}
-		return normalizeOverlapAdd(out, weight, outLen);
+		return N(n, r, C);
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/granular.js
-function centsToRatio(cents) {
-	return Math.pow(2, cents / 1200);
+function re(e) {
+	return 2 ** (e / 1200);
 }
-/** Reads `outLen` samples from `chan` starting at `srcStart`, resampled by `rate` (rate>1 reads faster/shorter -> higher pitch), optionally reversed. Out-of-range reads are 0. */
-function readGrain(chan, srcStart, outLen, rate, reversed) {
-	const out = new Float32Array(outLen);
-	for (let i = 0; i < outLen; i++) {
-		const srcPos = srcStart + (reversed ? (outLen - 1 - i) * rate : i * rate);
-		const i0 = Math.floor(srcPos);
-		const frac = srcPos - i0;
-		const a = chan[i0] || 0;
-		const b = chan[i0 + 1] || 0;
-		out[i] = a + (b - a) * frac;
+function ie(e, t, n, r, i) {
+	let a = new Float32Array(n);
+	for (let o = 0; o < n; o++) {
+		let s = t + (i ? (n - 1 - o) * r : o * r), c = Math.floor(s), l = s - c, u = e[c] || 0, d = e[c + 1] || 0;
+		a[o] = u + (d - u) * l;
 	}
-	return out;
+	return a;
 }
-/**
-* params: { grainMs, hopFraction, posJitterMs, timeJitterMs, pitchJitterCents, reverseProb,
-* dropoutProb, envelope ('hann'|'tri'|'rect'), bitDepth }
-*/
-function stretchGranular(channels, sampleRate, ratio, params, seed) {
-	const p = params || {};
-	const grainMs = p.grainMs ?? 60;
-	const hopFraction = p.hopFraction ?? .5;
-	const posJitterMs = p.posJitterMs ?? 4;
-	const timeJitterMs = p.timeJitterMs ?? 0;
-	const pitchJitterCents = p.pitchJitterCents ?? 0;
-	const reverseProb = p.reverseProb ?? 0;
-	const dropoutProb = p.dropoutProb ?? 0;
-	const envelopeShape = p.envelope ?? "hann";
-	const bitDepth = p.bitDepth ?? null;
-	const grainSamples = Math.max(16, Math.round(grainMs / 1e3 * sampleRate));
-	const synthesisHop = Math.max(1, Math.round(grainSamples * hopFraction));
-	const analysisHop = Math.max(1, synthesisHop / ratio);
-	const posJitterSamples = posJitterMs / 1e3 * sampleRate;
-	const timeJitterSamples = timeJitterMs / 1e3 * sampleRate;
-	const window = getWindow(envelopeShape, grainSamples);
-	const inputLen = (channels.length > 1 ? toMono(channels) : channels[0]).length;
-	const outLen = Math.max(grainSamples, Math.round(inputLen * ratio));
-	const rng = makeRng(seed);
-	const grains = [];
-	let analysisPos = 0;
-	let synthesisPos = 0;
-	while (synthesisPos < outLen && analysisPos < inputLen + grainSamples) {
-		const srcStart = analysisPos + rng.signed() * posJitterSamples;
-		const dstStart = synthesisPos + rng.signed() * timeJitterSamples;
-		const reversed = rng.bool(reverseProb);
-		const dropped = rng.bool(dropoutProb);
-		const pitchRatio = centsToRatio(rng.signed() * pitchJitterCents);
-		grains.push({
-			srcStart: Math.max(0, srcStart),
-			dstStart: Math.max(0, Math.round(dstStart)),
-			reversed,
-			dropped,
-			pitchRatio
-		});
-		analysisPos += analysisHop;
-		synthesisPos += synthesisHop;
+function ae(e, t, n, r, i) {
+	let a = r || {}, o = a.grainMs ?? 60, s = a.hopFraction ?? .5, c = a.posJitterMs ?? 4, l = a.timeJitterMs ?? 0, u = a.pitchJitterCents ?? 0, f = a.reverseProb ?? 0, p = a.dropoutProb ?? 0, m = a.envelope ?? "hann", h = a.bitDepth ?? null, g = Math.max(16, Math.round(o / 1e3 * t)), v = Math.max(1, Math.round(g * s)), y = Math.max(1, v / n), x = c / 1e3 * t, S = l / 1e3 * t, C = _(m, g), w = (e.length > 1 ? d(e) : e[0]).length, T = Math.max(g, Math.round(w * n)), E = A(i), D = [], O = 0, k = 0;
+	for (; k < T && O < w + g;) {
+		let e = O + E.signed() * x, t = k + E.signed() * S, n = E.bool(f), r = E.bool(p), i = re(E.signed() * u);
+		D.push({
+			srcStart: Math.max(0, e),
+			dstStart: Math.max(0, Math.round(t)),
+			reversed: n,
+			dropped: r,
+			pitchRatio: i
+		}), O += y, k += v;
 	}
-	return channels.map((chan) => {
-		const out = new Float32Array(outLen + grainSamples);
-		const weight = new Float32Array(outLen + grainSamples);
-		for (const g of grains) {
-			if (g.dropped) continue;
-			const grain = readGrain(chan, g.srcStart, grainSamples, g.pitchRatio, g.reversed);
-			for (let i = 0; i < grainSamples; i++) {
-				out[g.dstStart + i] += grain[i] * window[i];
-				weight[g.dstStart + i] += window[i];
-			}
+	return e.map((e) => {
+		let t = new Float32Array(T + g), n = new Float32Array(T + g);
+		for (let r of D) {
+			if (r.dropped) continue;
+			let i = ie(e, r.srcStart, g, r.pitchRatio, r.reversed);
+			for (let e = 0; e < g; e++) t[r.dstStart + e] += i[e] * C[e], n[r.dstStart + e] += C[e];
 		}
-		const result = new Float32Array(outLen);
-		for (let i = 0; i < outLen; i++) result[i] = weight[i] > 1e-6 ? out[i] / weight[i] : 0;
-		if (bitDepth) quantizeInPlace(result, bitDepth);
-		return result;
+		let r = new Float32Array(T);
+		for (let e = 0; e < T; e++) r[e] = n[e] > 1e-6 ? t[e] / n[e] : 0;
+		return h && b(r, h), r;
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/repeat.js
-/**
-* params: { chunkMs, crossfadeMs, bitDepth, repeatJitter (0-1, random +/-1 wobble on repeat count) }
-*/
-function stretchRepeat(channels, sampleRate, ratio, params, seed) {
-	const p = params || {};
-	const chunkMs = p.chunkMs ?? 90;
-	const crossfadeMs = p.crossfadeMs ?? 3;
-	const bitDepth = p.bitDepth ?? null;
-	const repeatJitter = Math.max(0, Math.min(1, p.repeatJitter ?? 0));
-	const chunkSamples = Math.max(32, Math.round(chunkMs / 1e3 * sampleRate));
-	const crossfadeSamplesTarget = Math.max(0, Math.round(crossfadeMs / 1e3 * sampleRate));
-	const inputLen = (channels.length > 1 ? toMono(channels) : channels[0]).length;
-	const rng = makeRng(seed);
-	const chunks = [];
-	let acc = 0;
-	for (let srcStart = 0; srcStart < inputLen; srcStart += chunkSamples) {
-		acc += ratio;
-		let count = Math.round(acc);
-		acc -= count;
-		if (repeatJitter > 0 && count > 0 && rng.bool(repeatJitter * .5)) count = Math.max(0, count + (rng.bool() ? -1 : 1));
-		const len = Math.min(chunkSamples, inputLen - srcStart);
-		if (len > 0 && count > 0) chunks.push({
-			srcStart,
-			len,
-			count
+function R(e, t, n, r, i) {
+	let a = r || {}, o = a.chunkMs ?? 90, s = a.crossfadeMs ?? 3, c = a.bitDepth ?? null, l = Math.max(0, Math.min(1, a.repeatJitter ?? 0)), u = Math.max(32, Math.round(o / 1e3 * t)), f = Math.max(0, Math.round(s / 1e3 * t)), p = (e.length > 1 ? d(e) : e[0]).length, m = A(i), h = [], g = 0;
+	for (let e = 0; e < p; e += u) {
+		g += n;
+		let t = Math.round(g);
+		g -= t, l > 0 && t > 0 && m.bool(l * .5) && (t = Math.max(0, t + (m.bool() ? -1 : 1)));
+		let r = Math.min(u, p - e);
+		r > 0 && t > 0 && h.push({
+			srcStart: e,
+			len: r,
+			count: t
 		});
 	}
-	if (chunks.length === 0) chunks.push({
+	h.length === 0 && h.push({
 		srcStart: 0,
-		len: Math.max(1, inputLen),
+		len: Math.max(1, p),
 		count: 1
 	});
-	const segments = [];
-	for (const { srcStart, len, count } of chunks) for (let r = 0; r < count; r++) segments.push({
-		srcStart,
-		len
+	let _ = [];
+	for (let { srcStart: e, len: t, count: n } of h) for (let r = 0; r < n; r++) _.push({
+		srcStart: e,
+		len: t
 	});
-	let totalOut = 0;
-	let prevLen = 0;
-	for (let i = 0; i < segments.length; i++) {
-		const len = segments[i].len;
-		const cf = i === 0 ? 0 : Math.min(crossfadeSamplesTarget, len - 1, prevLen - 1);
-		totalOut += len - cf;
-		prevLen = len;
+	let v = 0, y = 0;
+	for (let e = 0; e < _.length; e++) {
+		let t = _[e].len, n = e === 0 ? 0 : Math.min(f, t - 1, y - 1);
+		v += t - n, y = t;
 	}
-	return channels.map((chan) => {
-		const out = new Float32Array(Math.max(1, totalOut));
-		let writePos = 0;
-		let prevSegLen = 0;
-		for (let i = 0; i < segments.length; i++) {
-			const { srcStart, len } = segments[i];
-			const cf = i === 0 ? 0 : Math.min(crossfadeSamplesTarget, len - 1, prevSegLen - 1);
-			const start = writePos - cf;
-			for (let k = 0; k < len; k++) {
-				const idx = start + k;
-				if (idx < 0 || idx >= out.length) continue;
-				const s = chan[srcStart + k] || 0;
-				if (k < cf) {
-					const g = (k + 1) / (cf + 1);
-					out[idx] = out[idx] * (1 - g) + s * g;
-				} else out[idx] = s;
+	return e.map((e) => {
+		let t = new Float32Array(Math.max(1, v)), n = 0, r = 0;
+		for (let i = 0; i < _.length; i++) {
+			let { srcStart: a, len: o } = _[i], s = i === 0 ? 0 : Math.min(f, o - 1, r - 1), c = n - s;
+			for (let n = 0; n < o; n++) {
+				let r = c + n;
+				if (r < 0 || r >= t.length) continue;
+				let i = e[a + n] || 0;
+				if (n < s) {
+					let e = (n + 1) / (s + 1);
+					t[r] = t[r] * (1 - e) + i * e;
+				} else t[r] = i;
 			}
-			writePos = start + len;
-			prevSegLen = len;
+			n = c + o, r = o;
 		}
-		if (bitDepth) quantizeInPlace(out, bitDepth);
-		return out;
+		return c && b(t, c), t;
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/spectral-freeze.js
-function clamp01$1(x) {
-	return Math.max(0, Math.min(1, x));
+function z(e) {
+	return Math.max(0, Math.min(1, e));
 }
-/**
-* params: { fftMs, overlap, holdMs (how long each captured frame sustains before crossfading) }
-*/
-function stretchSpectralFreeze(channels, sampleRate, ratio, params) {
-	const p = params || {};
-	const fftSize = nextPow2(Math.max(256, Math.round((p.fftMs ?? 90) / 1e3 * sampleRate)));
-	const half = fftSize / 2;
-	const hopDivisor = Math.max(2, p.overlap ?? 4);
-	const Ha = Math.max(1, Math.round(fftSize / hopDivisor));
-	const { Hs } = planHops(fftSize, hopDivisor, ratio);
-	const holdMs = Math.max(20, p.holdMs ?? 300);
-	const holdHops = Math.max(2, Math.round(holdMs / 1e3 * sampleRate / Hs));
-	const crossfadeHops = Math.max(1, Math.round(holdHops * .3));
-	const inputLen = (channels.length > 1 ? toMono(channels) : channels[0]).length;
-	const outLen = Math.max(fftSize, Math.round(inputLen * ratio));
-	const totalHops = Math.max(1, Math.ceil(outLen / Hs));
-	const totalSegments = Math.max(1, Math.ceil(totalHops / holdHops));
-	const window = getWindow("hann", fftSize);
-	const maxPos = Math.max(0, inputLen - fftSize);
-	const capturePos = [];
-	for (let s = 0; s <= totalSegments; s++) capturePos.push(totalSegments <= 1 ? 0 : Math.round(s / totalSegments * maxPos));
-	return channels.map((chan) => {
-		const segMag = [];
-		const segPhase0 = [];
-		const segFreq = [];
-		for (let s = 0; s <= totalSegments; s++) {
-			const pos = capturePos[s];
-			const { mag, phase } = analyzeFrame(chan, pos, fftSize, window, half);
-			const { phase: phaseNext } = analyzeFrame(chan, pos + Ha, fftSize, window, half);
-			const freq = new Float64Array(half + 1);
-			for (let k = 0; k <= half; k++) {
-				const expected = 2 * Math.PI * k * Ha / fftSize;
-				const delta = wrapPhase(phaseNext[k] - phase[k] - expected);
-				freq[k] = 2 * Math.PI * k / fftSize + delta / Ha;
+function B(e, t, n, r) {
+	let i = r || {}, a = S(Math.max(256, Math.round((i.fftMs ?? 90) / 1e3 * t))), o = a / 2, s = Math.max(2, i.overlap ?? 4), c = Math.max(1, Math.round(a / s)), { Hs: l } = M(a, s, n), u = Math.max(20, i.holdMs ?? 300), f = Math.max(2, Math.round(u / 1e3 * t / l)), p = Math.max(1, Math.round(f * .3)), m = (e.length > 1 ? d(e) : e[0]).length, h = Math.max(a, Math.round(m * n)), g = Math.max(1, Math.ceil(h / l)), v = Math.max(1, Math.ceil(g / f)), y = _("hann", a), b = Math.max(0, m - a), x = [];
+	for (let e = 0; e <= v; e++) x.push(v <= 1 ? 0 : Math.round(e / v * b));
+	return e.map((e) => {
+		let t = [], n = [], r = [];
+		for (let i = 0; i <= v; i++) {
+			let s = x[i], { mag: l, phase: u } = j(e, s, a, y, o), { phase: d } = j(e, s + c, a, y, o), f = new Float64Array(o + 1);
+			for (let e = 0; e <= o; e++) {
+				let t = 2 * Math.PI * e * c / a, n = E(d[e] - u[e] - t);
+				f[e] = 2 * Math.PI * e / a + n / c;
 			}
-			segMag.push(mag);
-			segPhase0.push(phase);
-			segFreq.push(freq);
+			t.push(l), n.push(u), r.push(f);
 		}
-		const out = new Float64Array(outLen + fftSize);
-		const weight = new Float64Array(outLen + fftSize);
-		const outPhase = Float64Array.from(segPhase0[0]);
-		const synRe = new Float64Array(fftSize);
-		const synIm = new Float64Array(fftSize);
-		const mag = new Float64Array(half + 1);
-		const freq = new Float64Array(half + 1);
-		let hop = 0;
-		for (let seg = 0; seg < totalSegments && hop < totalHops; seg++) for (let h = 0; h < holdHops && hop < totalHops; h++, hop++) {
-			const remaining = holdHops - h;
-			const mixNext = remaining <= crossfadeHops ? clamp01$1(1 - (remaining - 1) / crossfadeHops) : 0;
-			const magA = segMag[seg];
-			const magB = segMag[seg + 1];
-			const freqA = segFreq[seg];
-			const freqB = segFreq[seg + 1];
-			for (let k = 0; k <= half; k++) {
-				mag[k] = magA[k] * (1 - mixNext) + magB[k] * mixNext;
-				freq[k] = freqA[k] * (1 - mixNext) + freqB[k] * mixNext;
-			}
-			const synthesisPos = hop * Hs;
-			synthesizeSpectrum(synRe, synIm, mag, outPhase, fftSize, half);
-			ifft(synRe, synIm);
-			for (let i = 0; i < fftSize; i++) {
-				out[synthesisPos + i] += synRe[i] * window[i];
-				weight[synthesisPos + i] += window[i] * window[i];
-			}
-			for (let k = 0; k <= half; k++) outPhase[k] += freq[k] * Hs;
+		let i = new Float64Array(h + a), s = new Float64Array(h + a), u = Float64Array.from(n[0]), d = new Float64Array(a), m = new Float64Array(a), _ = new Float64Array(o + 1), b = new Float64Array(o + 1), S = 0;
+		for (let e = 0; e < v && S < g; e++) for (let n = 0; n < f && S < g; n++, S++) {
+			let c = f - n, h = c <= p ? z(1 - (c - 1) / p) : 0, g = t[e], v = t[e + 1], x = r[e], C = r[e + 1];
+			for (let e = 0; e <= o; e++) _[e] = g[e] * (1 - h) + v[e] * h, b[e] = x[e] * (1 - h) + C[e] * h;
+			let w = S * l;
+			P(d, m, _, u, a, o), T(d, m);
+			for (let e = 0; e < a; e++) i[w + e] += d[e] * y[e], s[w + e] += y[e] * y[e];
+			for (let e = 0; e <= o; e++) u[e] += b[e] * l;
 		}
-		return normalizeOverlapAdd(out, weight, outLen);
+		return N(i, s, h);
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/paulstretch.js
-/** Smooths a magnitude spectrum across neighbouring bins - the "smear" macro's spectral half. */
-function smoothMagnitudeInPlace(mag, half, amount) {
-	if (amount <= 0) return;
-	const radius = Math.max(1, Math.round(amount * 6));
-	const src = mag.slice();
-	for (let k = 0; k <= half; k++) {
-		let sum = 0;
-		let count = 0;
-		for (let j = -radius; j <= radius; j++) {
-			const idx = k + j;
-			if (idx < 0 || idx > half) continue;
-			sum += src[idx];
-			count++;
+function V(e, t, n) {
+	if (n <= 0) return;
+	let r = Math.max(1, Math.round(n * 6)), i = e.slice();
+	for (let n = 0; n <= t; n++) {
+		let a = 0, o = 0;
+		for (let e = -r; e <= r; e++) {
+			let r = n + e;
+			r < 0 || r > t || (a += i[r], o++);
 		}
-		mag[k] = sum / count;
+		e[n] = a / o;
 	}
 }
-/**
-* params: { windowMs, overlap (hop divisor, higher = denser), smear (0-1, magnitude smoothing +
-* frame blending), frameBlend (0-1, how much of the previous frame's magnitude bleeds into this one) }
-*/
-function stretchPaulstretch(channels, sampleRate, ratio, params, seed) {
-	const p = params || {};
-	const fftSize = nextPow2(Math.max(256, Math.round((p.windowMs ?? 250) / 1e3 * sampleRate)));
-	const half = fftSize / 2;
-	const { Ha, Hs } = planHops(fftSize, Math.max(4, p.overlap ?? 8), ratio);
-	const window = getWindow("hann", fftSize);
-	const smear = Math.max(0, Math.min(1, p.smear ?? .3));
-	const frameBlend = Math.max(0, Math.min(.95, p.frameBlend ?? smear * .5));
-	const inputLen = (channels.length > 1 ? toMono(channels) : channels[0]).length;
-	const outLen = Math.max(fftSize, Math.round(inputLen * ratio));
-	const numFrames = Math.max(1, Math.ceil(inputLen / Ha) + 1);
-	return channels.map((chan) => {
-		const out = new Float64Array(outLen + fftSize);
-		const weight = new Float64Array(outLen + fftSize);
-		const re = new Float64Array(fftSize);
-		const im = new Float64Array(fftSize);
-		let prevMag = null;
-		for (let m = 0; m < numFrames; m++) {
-			const analysisPos = Math.floor(m * Ha);
-			const synthesisPos = m * Hs;
-			if (synthesisPos > outLen + fftSize) break;
-			const { mag: rawMag } = analyzeFrame(chan, analysisPos, fftSize, window, half);
-			const mag = new Float64Array(half + 1);
-			for (let k = 0; k <= half; k++) mag[k] = prevMag ? rawMag[k] * (1 - frameBlend) + prevMag[k] * frameBlend : rawMag[k];
-			smoothMagnitudeInPlace(mag, half, smear);
-			prevMag = mag;
-			const rng = makeRng(deriveSeed(seed, m));
-			re[0] = mag[0];
-			im[0] = 0;
-			re[half] = mag[half];
-			im[half] = 0;
-			for (let k = 1; k < half; k++) {
-				const ph = rng.next() * 2 * Math.PI;
-				re[k] = mag[k] * Math.cos(ph);
-				im[k] = mag[k] * Math.sin(ph);
-				re[fftSize - k] = re[k];
-				im[fftSize - k] = -im[k];
+function H(e, t, n, r, i) {
+	let a = r || {}, o = S(Math.max(256, Math.round((a.windowMs ?? 250) / 1e3 * t))), s = o / 2, { Ha: c, Hs: l } = M(o, Math.max(4, a.overlap ?? 8), n), u = _("hann", o), f = Math.max(0, Math.min(1, a.smear ?? .3)), p = Math.max(0, Math.min(.95, a.frameBlend ?? f * .5)), m = (e.length > 1 ? d(e) : e[0]).length, h = Math.max(o, Math.round(m * n)), g = Math.max(1, Math.ceil(m / c) + 1);
+	return e.map((e) => {
+		let t = new Float64Array(h + o), n = new Float64Array(h + o), r = new Float64Array(o), a = new Float64Array(o), d = null;
+		for (let m = 0; m < g; m++) {
+			let g = Math.floor(m * c), _ = m * l;
+			if (_ > h + o) break;
+			let { mag: v } = j(e, g, o, u, s), y = new Float64Array(s + 1);
+			for (let e = 0; e <= s; e++) y[e] = d ? v[e] * (1 - p) + d[e] * p : v[e];
+			V(y, s, f), d = y;
+			let b = A(k(i, m));
+			r[0] = y[0], a[0] = 0, r[s] = y[s], a[s] = 0;
+			for (let e = 1; e < s; e++) {
+				let t = b.next() * 2 * Math.PI;
+				r[e] = y[e] * Math.cos(t), a[e] = y[e] * Math.sin(t), r[o - e] = r[e], a[o - e] = -a[e];
 			}
-			ifft(re, im);
-			for (let i = 0; i < fftSize; i++) {
-				const s = re[i] * window[i];
-				out[synthesisPos + i] += s;
-				weight[synthesisPos + i] += window[i] * window[i];
+			T(r, a);
+			for (let e = 0; e < o; e++) {
+				let i = r[e] * u[e];
+				t[_ + e] += i, n[_ + e] += u[e] * u[e];
 			}
 		}
-		return normalizeOverlapAdd(out, weight, outLen);
+		return N(t, n, h);
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/varispeed.js
-/** ratio = output length / input length, same convention as every other stretch engine here. */
-function stretchVarispeed(channels, ratio) {
-	return channels.map((ch) => resampleLinear(ch, 1, ratio));
+function U(e, t) {
+	return e.map((e) => f(e, 1, t));
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/cyclic.js
-/**
-* params: { cycleMs, crossfade (0-0.5, fraction of the cycle spent crossfading into the next), bitDepth }
-*/
-function stretchCyclic(channels, sampleRate, ratio, params) {
-	const p = params || {};
-	const cycleSamples = Math.max(16, Math.round((p.cycleMs ?? 60) / 1e3 * sampleRate));
-	const crossfade = Math.max(0, Math.min(.5, p.crossfade ?? .3));
-	const bitDepth = p.bitDepth ?? null;
-	const fadeLen = Math.round(cycleSamples * crossfade);
-	const hop = cycleSamples - fadeLen;
-	const inputLen = channels[0] ? channels[0].length : 0;
-	const outLen = Math.max(1, Math.round(inputLen * ratio));
-	const numCycles = Math.ceil(outLen / hop) + 1;
-	const gain = new Float32Array(cycleSamples);
-	for (let i = 0; i < cycleSamples; i++) {
-		let g = 1;
-		if (fadeLen > 0 && i < fadeLen) g = (i + 1) / (fadeLen + 1);
-		if (fadeLen > 0 && i >= cycleSamples - fadeLen) g = Math.min(g, (cycleSamples - i) / (fadeLen + 1));
-		gain[i] = g;
+function W(e, t, n, r) {
+	let i = r || {}, a = Math.max(16, Math.round((i.cycleMs ?? 60) / 1e3 * t)), o = Math.max(0, Math.min(.5, i.crossfade ?? .3)), s = i.bitDepth ?? null, c = Math.round(a * o), l = a - c, u = e[0] ? e[0].length : 0, d = Math.max(1, Math.round(u * n)), f = Math.ceil(d / l) + 1, p = new Float32Array(a);
+	for (let e = 0; e < a; e++) {
+		let t = 1;
+		c > 0 && e < c && (t = (e + 1) / (c + 1)), c > 0 && e >= a - c && (t = Math.min(t, (a - e) / (c + 1))), p[e] = t;
 	}
-	return channels.map((chan) => {
-		const out = new Float32Array(outLen);
-		for (let n = 0; n < numCycles; n++) {
-			const dst = n * hop;
-			if (dst >= outLen) break;
-			const src = Math.max(0, Math.min(inputLen - cycleSamples, Math.round(dst / ratio)));
-			const first = n === 0;
-			for (let i = 0; i < cycleSamples; i++) {
-				const idx = dst + i;
-				if (idx >= outLen) break;
-				const g = first && i < fadeLen ? 1 : gain[i];
-				out[idx] += (chan[src + i] || 0) * g;
+	return e.map((e) => {
+		let t = new Float32Array(d);
+		for (let r = 0; r < f; r++) {
+			let i = r * l;
+			if (i >= d) break;
+			let o = Math.max(0, Math.min(u - a, Math.round(i / n))), s = r === 0;
+			for (let n = 0; n < a; n++) {
+				let r = i + n;
+				if (r >= d) break;
+				let a = s && n < c ? 1 : p[n];
+				t[r] += (e[o + n] || 0) * a;
 			}
 		}
-		if (bitDepth) quantizeInPlace(out, bitDepth);
-		return out;
+		return s && b(t, s), t;
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/dsp/stretch/index.js
-var ENGINE_FNS = {
-	wsola: (channels, sr, ratio, params) => stretchWsola(channels, sr, ratio, params),
-	phaseVocoder: (channels, sr, ratio, params, seed) => stretchPhaseVocoder(channels, sr, ratio, params, seed),
-	granular: (channels, sr, ratio, params, seed) => stretchGranular(channels, sr, ratio, params, seed),
-	repeat: (channels, sr, ratio, params, seed) => stretchRepeat(channels, sr, ratio, params, seed),
-	spectralFreeze: (channels, sr, ratio, params) => stretchSpectralFreeze(channels, sr, ratio, params),
-	paulstretch: (channels, sr, ratio, params, seed) => stretchPaulstretch(channels, sr, ratio, params, seed),
-	varispeed: (channels, sr, ratio) => stretchVarispeed(channels, ratio),
-	cyclic: (channels, sr, ratio, params) => stretchCyclic(channels, sr, ratio, params)
-};
-/** Floor the dispatcher clamps to. Exported so a caller can check whether a ratio it wants
-* is actually reachable, rather than having it silently clamped underneath them. */
-var MIN_RATIO = .05;
-/**
-* Time-stretch every channel using the named character. `ratio` = output length / input length.
-* `options`: { macroValues: {texture, variation, smear, roughness}, seed }. Unrecognised character
-* ids (an old id this version dropped, a typo, a corrupt saved setting) fall back to "clean" rather
-* than throwing, per resolveCharacter().
-*/
-function stretchChannels(channels, sampleRate, ratio, characterKey, options = {}) {
-	const character = resolveCharacter(characterKey);
-	const inputLen = channels[0] ? channels[0].length : 0;
-	const lengthCap = inputLen > 0 ? Math.max(1, 600 * sampleRate / inputLen) : Infinity;
-	const maxRatio = Math.min(character.maxRatio || 1e3, lengthCap);
-	const clamped = Math.max(MIN_RATIO, Math.min(maxRatio, ratio || 1));
-	if (Math.abs(clamped - 1) < 1e-6) return channels.map((ch) => Float32Array.from(ch));
-	const params = resolveCharacterParams(character, options.macroValues);
-	const seed = options.seed ?? 1;
-	const result = (ENGINE_FNS[character.engine] || ENGINE_FNS.wsola)(channels, sampleRate, clamped, params, seed);
-	for (const ch of result) for (let i = 0; i < ch.length; i++) {
-		const v = ch[i];
-		if (!Number.isFinite(v)) ch[i] = 0;
-		else if (v > 4) ch[i] = 4;
-		else if (v < -4) ch[i] = -4;
+var G = {
+	wsola: (e, t, n, r) => x(e, t, n, r),
+	phaseVocoder: (e, t, n, r, i) => ne(e, t, n, r, i),
+	granular: (e, t, n, r, i) => ae(e, t, n, r, i),
+	repeat: (e, t, n, r, i) => R(e, t, n, r, i),
+	spectralFreeze: (e, t, n, r) => B(e, t, n, r),
+	paulstretch: (e, t, n, r, i) => H(e, t, n, r, i),
+	varispeed: (e, t, n) => U(e, n),
+	cyclic: (e, t, n, r) => W(e, t, n, r)
+}, K = .05;
+function q(e, t, n, r, i = {}) {
+	let a = c(r), o = e[0] ? e[0].length : 0, s = o > 0 ? Math.max(1, 600 * t / o) : Infinity, u = Math.min(a.maxRatio || 1e3, s), d = Math.max(K, Math.min(u, n || 1));
+	if (Math.abs(d - 1) < 1e-6) return e.map((e) => Float32Array.from(e));
+	let f = l(a, i.macroValues), p = i.seed ?? 1, m = (G[a.engine] || G.wsola)(e, t, d, f, p);
+	for (let e of m) for (let t = 0; t < e.length; t++) {
+		let n = e[t];
+		Number.isFinite(n) ? n > 4 ? e[t] = 4 : n < -4 && (e[t] = -4) : e[t] = 0;
 	}
-	return result;
+	return m;
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/outputstage.js
-function clamp01(x) {
-	return Math.max(0, Math.min(1, x));
+function oe(e) {
+	return Math.max(0, Math.min(1, e));
 }
-function driveShapeFor(key) {
-	switch (key) {
-		case "tube": return (x, g, d) => {
-			const bias = .2 * d;
-			return Math.tanh((x + bias) * g) - Math.tanh(bias * g);
+function se(e) {
+	switch (e) {
+		case "tube": return (e, t, n) => {
+			let r = .2 * n;
+			return Math.tanh((e + r) * t) - Math.tanh(r * t);
 		};
-		case "diode": return (x, g) => Math.max(-1, Math.min(1, x * g));
-		case "fuzz": return (x, g) => {
-			const v = x * g;
-			return v > 0 ? Math.tanh(v * 3) : Math.max(-1, Math.min(0, v));
+		case "diode": return (e, t) => Math.max(-1, Math.min(1, e * t));
+		case "fuzz": return (e, t) => {
+			let n = e * t;
+			return n > 0 ? Math.tanh(n * 3) : Math.max(-1, Math.min(0, n));
 		};
-		default: return (x, g) => Math.tanh(x * g);
+		default: return (e, t) => Math.tanh(e * t);
 	}
 }
-/** amountPct 0-100. 0 is a no-op copy. */
-function applyDrive(channels, driveKey, amountPct = 0) {
-	const d = clamp01((amountPct ?? 0) / 100);
-	if (d <= 1e-4) return channels.map((ch) => Float32Array.from(ch));
-	const g = 1 + d * 5;
-	const shape = driveShapeFor(driveKey);
-	return channels.map((ch) => {
-		const out = new Float32Array(ch.length);
-		for (let i = 0; i < ch.length; i++) {
-			const x = ch[i];
-			out[i] = (1 - d) * x + d * shape(x, g, d);
+function ce(e, t, n = 0) {
+	let r = oe((n ?? 0) / 100);
+	if (r <= 1e-4) return e.map((e) => Float32Array.from(e));
+	let i = 1 + r * 5, a = se(t);
+	return e.map((e) => {
+		let t = new Float32Array(e.length);
+		for (let n = 0; n < e.length; n++) {
+			let o = e[n];
+			t[n] = (1 - r) * o + r * a(o, i, r);
 		}
-		return out;
+		return t;
 	});
 }
-/** bits: 1-16 (16 = no reduction). rateDivide: 1-32 (1 = no reduction). Both are no-ops at their max. */
-function applyCrunch(channels, { bits = 16, rateDivide = 1 } = {}) {
-	const bitsClamped = Math.max(1, Math.min(16, Math.round(bits ?? 16)));
-	const rateClamped = Math.max(1, Math.min(32, Math.round(rateDivide ?? 1)));
-	const hasBits = bitsClamped < 16;
-	const hasRate = rateClamped > 1;
-	if (!hasBits && !hasRate) return channels.map((ch) => Float32Array.from(ch));
-	const step = 2 / Math.pow(2, bitsClamped);
-	return channels.map((ch) => {
-		const out = new Float32Array(ch.length);
-		let held = 0;
-		for (let i = 0; i < ch.length; i++) {
-			if (!hasRate || i % rateClamped === 0) held = ch[i];
-			out[i] = hasBits ? Math.round(held / step) * step : held;
-		}
-		return out;
+function le(e, { bits: t = 16, rateDivide: n = 1 } = {}) {
+	let r = Math.max(1, Math.min(16, Math.round(t ?? 16))), i = Math.max(1, Math.min(32, Math.round(n ?? 1))), a = r < 16, o = i > 1;
+	if (!a && !o) return e.map((e) => Float32Array.from(e));
+	let s = 2 / 2 ** r;
+	return e.map((e) => {
+		let t = new Float32Array(e.length), n = 0;
+		for (let r = 0; r < e.length; r++) (!o || r % i === 0) && (n = e[r]), t[r] = a ? Math.round(n / s) * s : n;
+		return t;
 	});
 }
 //#endregion
 //#region src/dsp/vendor/goodbits/js/stretch-fx/render.js
-/** Longest output any result may have, in seconds, whatever the recipe says. */
-var HARD_MAX_SECONDS = 24;
-function peakOf(channels) {
-	let peak = 0;
-	for (const ch of channels) for (let i = 0; i < ch.length; i++) {
-		const v = Math.abs(ch[i]);
-		if (v > peak) peak = v;
+var ue = 24;
+function J(e) {
+	let t = 0;
+	for (let n of e) for (let e = 0; e < n.length; e++) {
+		let r = Math.abs(n[e]);
+		r > t && (t = r);
 	}
-	return peak;
+	return t;
 }
-function reverseAll(channels) {
-	return channels.map((ch) => Float32Array.from(ch).reverse());
+function Y(e) {
+	return e.map((e) => Float32Array.from(e).reverse());
 }
-function scrub(channels) {
-	for (const ch of channels) for (let i = 0; i < ch.length; i++) if (!Number.isFinite(ch[i])) ch[i] = 0;
+function de(e) {
+	for (let t of e) for (let e = 0; e < t.length; e++) Number.isFinite(t[e]) || (t[e] = 0);
 }
-/**
-* @param {object} opts
-* @param {Float32Array[]} opts.channels  the source fragment (already cut from the break)
-* @param {number} opts.sampleRate
-* @param {object} opts.recipe            from recipe.js
-* @returns {{channels: Float32Array[], sampleRate: number, duration: number}}
-*/
-function renderFx({ channels, sampleRate, recipe }) {
-	if (!channels.length || !channels[0].length) throw new Error("empty fragment");
-	const ms = (m) => Math.round(m / 1e3 * sampleRate);
-	let out = channels.map((ch) => Float32Array.from(ch));
-	const peakIn = peakOf(out);
-	applyFades(out, ms(.6), ms(6));
-	if (recipe.reverse === "pre") out = reverseAll(out);
-	if (recipe.pitch) {
-		const lengthFactor = Math.pow(2, -recipe.pitch / 12);
-		out = out.map((ch) => resampleLinear(ch, 1, lengthFactor));
+function fe({ channels: e, sampleRate: t, recipe: n }) {
+	if (!e.length || !e[0].length) throw Error("empty fragment");
+	let r = (e) => Math.round(e / 1e3 * t), i = e.map((e) => Float32Array.from(e)), a = J(i);
+	if (u(i, r(.6), r(6)), n.reverse === "pre" && (i = Y(i)), n.pitch) {
+		let e = 2 ** (-n.pitch / 12);
+		i = i.map((t) => f(t, 1, e));
 	}
-	const seedBase = recipe.seed >>> 0;
-	recipe.passes.forEach((pass, i) => {
-		const maxRatio = HARD_MAX_SECONDS * sampleRate / Math.max(1, out[0].length);
-		const ratio = Math.max(.05, Math.min(pass.ratio, maxRatio));
-		out = stretchChannels(out, sampleRate, ratio, pass.character, {
-			macroValues: pass.macroValues,
-			seed: seedBase + i * 7919 >>> 0
+	let o = n.seed >>> 0;
+	n.passes.forEach((e, n) => {
+		let r = ue * t / Math.max(1, i[0].length), a = Math.max(.05, Math.min(e.ratio, r));
+		i = q(i, t, a, e.character, {
+			macroValues: e.macroValues,
+			seed: o + n * 7919 >>> 0
 		});
-	});
-	if (recipe.reverse === "post") out = reverseAll(out);
-	if (recipe.drive && recipe.drive.amount > 0) out = applyDrive(out, recipe.drive.type, recipe.drive.amount);
-	if (recipe.crunch) out = applyCrunch(out, recipe.crunch);
-	scrub(out);
-	const peakOut = peakOf(out);
-	const target = Math.max(.3, Math.min(.92, peakIn || .5));
-	if (peakOut > 1e-6) {
-		const gain = Math.min(8, target / peakOut);
-		for (const ch of out) for (let i = 0; i < ch.length; i++) ch[i] *= gain;
+	}), n.reverse === "post" && (i = Y(i)), n.drive && n.drive.amount > 0 && (i = ce(i, n.drive.type, n.drive.amount)), n.crunch && (i = le(i, n.crunch)), de(i);
+	let s = J(i), c = Math.max(.3, Math.min(.92, a || .5));
+	if (s > 1e-6) {
+		let e = Math.min(8, c / s);
+		for (let t of i) for (let n = 0; n < t.length; n++) t[n] *= e;
 	}
-	const fadeIn = recipe.reverse === "post" ? ms(10) : ms(.7);
-	const fadeOut = recipe.reverse === "post" ? ms(2) : ms(14);
-	applyFades(out, fadeIn, fadeOut);
-	return {
-		channels: out,
-		sampleRate,
-		duration: out[0].length / sampleRate
+	let l = n.reverse === "post" ? r(10) : r(.7), d = n.reverse === "post" ? r(2) : r(14);
+	return u(i, l, d), {
+		channels: i,
+		sampleRate: t,
+		duration: i[0].length / t
 	};
 }
 //#endregion
 //#region src/dsp/transform/settings.ts
-/**
-* Sample-transformation settings: a non-destructive recipe applied to a sample's audio before
-* it is played (time-stretch, varispeed pitch, reverse, drive, crunch), rendered by Good Bits'
-* STRETCH FX chain. The original sample is kept; only these settings are stored, and the
-* processed audio is recomputed (and cached) when needed.
-*/
-function identityTransform() {
+function X() {
 	return {
-		enabled: false,
+		enabled: !1,
 		reverse: "none",
 		pitch: 0,
 		character: "clean",
 		ratio: 1,
 		macros: {},
 		drive: {
-			enabled: false,
+			enabled: !1,
 			type: "tape",
 			amountPct: 30
 		},
 		crunch: {
-			enabled: false,
+			enabled: !1,
 			bits: 12,
 			rateDivide: 1
 		},
 		seed: 1
 	};
 }
-/** True when applying the transform would do nothing (so the original audio is used as is). */
-function isIdentity(t) {
-	return !t.enabled;
+function pe(e) {
+	return !e.enabled;
 }
-/** The STRETCH FX recipe for these settings (one stretch pass, or none at ratio 1). */
-function toRecipe(t) {
-	const usedMacros = CHARACTERS[t.character]?.macros ?? [];
-	const macroValues = {};
-	for (const k of usedMacros) if (typeof t.macros[k] === "number") macroValues[k] = t.macros[k];
+function me(e) {
+	let t = s[e.character]?.macros ?? [], n = {};
+	for (let r of t) typeof e.macros[r] == "number" && (n[r] = e.macros[r]);
 	return {
-		seed: t.seed >>> 0,
-		pitch: t.pitch,
-		reverse: t.reverse === "none" ? null : t.reverse,
-		passes: Math.abs(t.ratio - 1) < 1e-6 ? [] : [{
-			character: t.character,
-			ratio: t.ratio,
-			macroValues
+		seed: e.seed >>> 0,
+		pitch: e.pitch,
+		reverse: e.reverse === "none" ? null : e.reverse,
+		passes: Math.abs(e.ratio - 1) < 1e-6 ? [] : [{
+			character: e.character,
+			ratio: e.ratio,
+			macroValues: n
 		}],
-		drive: t.drive.enabled && t.drive.amountPct > 0 ? {
-			type: t.drive.type,
-			amount: t.drive.amountPct
+		drive: e.drive.enabled && e.drive.amountPct > 0 ? {
+			type: e.drive.type,
+			amount: e.drive.amountPct
 		} : null,
-		crunch: t.crunch.enabled ? {
-			bits: t.crunch.bits,
-			rateDivide: t.crunch.rateDivide
+		crunch: e.crunch.enabled ? {
+			bits: e.crunch.bits,
+			rateDivide: e.crunch.rateDivide
 		} : null
 	};
 }
-var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var num = (v, lo, hi, def, int = false) => {
-	let x = typeof v === "number" && Number.isFinite(v) ? v : def;
-	if (int) x = Math.round(x);
-	return Math.max(lo, Math.min(hi, x));
+var Z = (e) => !!e && typeof e == "object" && !Array.isArray(e), Q = (e, t, n, r, i = !1) => {
+	let a = typeof e == "number" && Number.isFinite(e) ? e : r;
+	return i && (a = Math.round(a)), Math.max(t, Math.min(n, a));
 };
-function repairTransform(src) {
-	const d = identityTransform();
-	const o = isObj(src) ? src : {};
-	const dr = isObj(o.drive) ? o.drive : {};
-	const cr = isObj(o.crunch) ? o.crunch : {};
-	const macros = {};
-	if (isObj(o.macros)) {
-		for (const [k, v] of Object.entries(o.macros)) if (k in MACROS && typeof v === "number" && Number.isFinite(v)) macros[k] = Math.max(0, Math.min(100, v));
-	}
+function he(t) {
+	let n = X(), r = Z(t) ? t : {}, i = Z(r.drive) ? r.drive : {}, a = Z(r.crunch) ? r.crunch : {}, o = {};
+	if (Z(r.macros)) for (let [t, n] of Object.entries(r.macros)) t in e && typeof n == "number" && Number.isFinite(n) && (o[t] = Math.max(0, Math.min(100, n)));
 	return {
-		enabled: o.enabled === true,
-		reverse: o.reverse === "pre" || o.reverse === "post" ? o.reverse : "none",
-		pitch: num(o.pitch, -24, 24, 0),
-		character: typeof o.character === "string" && o.character in CHARACTERS ? o.character : d.character,
-		ratio: num(o.ratio, .25, 8, 1),
-		macros,
+		enabled: r.enabled === !0,
+		reverse: r.reverse === "pre" || r.reverse === "post" ? r.reverse : "none",
+		pitch: Q(r.pitch, -24, 24, 0),
+		character: typeof r.character == "string" && r.character in s ? r.character : n.character,
+		ratio: Q(r.ratio, .25, 8, 1),
+		macros: o,
 		drive: {
-			enabled: dr.enabled === true,
+			enabled: i.enabled === !0,
 			type: [
 				"tape",
 				"tube",
 				"diode",
 				"fuzz"
-			].includes(dr.type) ? dr.type : "tape",
-			amountPct: num(dr.amountPct, 0, 100, 30)
+			].includes(i.type) ? i.type : "tape",
+			amountPct: Q(i.amountPct, 0, 100, 30)
 		},
 		crunch: {
-			enabled: cr.enabled === true,
-			bits: num(cr.bits, 1, 16, 12, true),
-			rateDivide: num(cr.rateDivide, 1, 32, 1, true)
+			enabled: a.enabled === !0,
+			bits: Q(a.bits, 1, 16, 12, !0),
+			rateDivide: Q(a.rateDivide, 1, 32, 1, !0)
 		},
-		seed: num(o.seed, 0, 4294967295, 1, true)
+		seed: Q(r.seed, 0, 4294967295, 1, !0)
 	};
 }
 //#endregion
 //#region src/dsp/transform/transform.ts
-/**
-* Applying a sample transformation: Good Bits' STRETCH FX renderer (`renderFx`), unchanged.
-* Pure and synchronous, so it runs the same on the main thread, in a Worker or in a test.
-*/
-/** The transformed audio, or the input itself (not copied) when the transform is off. */
-function applyTransform(audio, t) {
-	if (isIdentity(t)) return audio;
-	if (!audio.channels.length || !audio.channels[0].length) throw new Error("empty sample");
-	const r = renderFx({
-		channels: audio.channels,
-		sampleRate: audio.sampleRate,
-		recipe: toRecipe(t)
+function ge(e, t) {
+	if (pe(t)) return e;
+	if (!e.channels.length || !e.channels[0].length) throw Error("empty sample");
+	let n = fe({
+		channels: e.channels,
+		sampleRate: e.sampleRate,
+		recipe: me(t)
 	});
 	return {
-		sampleRate: r.sampleRate,
-		channels: r.channels
+		sampleRate: n.sampleRate,
+		channels: n.channels
 	};
 }
 //#endregion
 //#region src/dsp/transform/worker.ts
-/**
-* Web Worker entry for sample transformations, so a long stretch never blocks the page.
-* Message in: { id, audio: { sampleRate, channels }, transform }; out: { id, audio } or { id, error }.
-*/
-var scope = self;
-scope.onmessage = (e) => {
-	const { id, audio, transform } = e.data;
+var $ = self;
+$.onmessage = (e) => {
+	let { id: t, audio: n, transform: r } = e.data;
 	try {
-		const out = applyTransform(audio, repairTransform(transform));
-		const channels = out.channels === audio.channels ? out.channels.map((c) => c.slice()) : out.channels;
-		scope.postMessage({
-			id,
+		let e = ge(n, he(r)), i = e.channels === n.channels ? e.channels.map((e) => e.slice()) : e.channels;
+		$.postMessage({
+			id: t,
 			audio: {
-				sampleRate: out.sampleRate,
-				channels
+				sampleRate: e.sampleRate,
+				channels: i
 			}
-		}, channels.map((c) => c.buffer));
-	} catch (err) {
-		scope.postMessage({
-			id,
-			error: err instanceof Error ? err.message : String(err)
+		}, i.map((e) => e.buffer));
+	} catch (e) {
+		$.postMessage({
+			id: t,
+			error: e instanceof Error ? e.message : String(e)
 		});
 	}
 };

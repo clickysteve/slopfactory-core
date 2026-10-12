@@ -1,4 +1,4 @@
-import { t as fadeOut } from "./instrument-BOUO_zJs.js";
+import { n as fadeOut, t as GainEnvelope } from "./instrument-DxW7d1F9.js";
 import { n as parseAiff, r as parseWav } from "./audio-codec-8sSSPTh6.js";
 import { i as toMono, n as findNearestZeroCrossing } from "./dsp-DLHymMUz.js";
 //#region src/sampler/zone.ts
@@ -130,6 +130,8 @@ function parseNoteName(s) {
 * BaseAudioContext. One AudioBuffer is shared by every note (and by live and offline
 * contexts); each note only creates a buffer source, a gain and a panner.
 */
+/** Default fade when a note is stopped (stealing, panic, choke): 5 ms, linear. */
+var STOP_FADE_SECONDS = .005;
 var SampleInstrument = class {
 	buffer;
 	zone;
@@ -152,11 +154,16 @@ var SampleInstrument = class {
 		const pan = ctx.createStereoPanner();
 		pan.pan.value = z.pan;
 		src.connect(g).connect(pan).connect(out);
+		const env = new GainEnvelope();
 		const fadeIn = r.trimmedStart ? EDGE_FADE_SECONDS : 0;
 		if (fadeIn) {
 			g.gain.setValueAtTime(0, t);
 			g.gain.linearRampToValueAtTime(peak, t + fadeIn);
-		} else g.gain.setValueAtTime(peak, t);
+			env.set(t, 0).ramp(t + fadeIn, peak);
+		} else {
+			g.gain.setValueAtTime(peak, t);
+			env.set(t, peak);
+		}
 		let end;
 		if (z.mode === "loop") {
 			src.loop = true;
@@ -171,6 +178,7 @@ var SampleInstrument = class {
 			if (r.trimmedEnd && length / rate > .004) {
 				g.gain.setValueAtTime(peak, end - EDGE_FADE_SECONDS);
 				g.gain.linearRampToValueAtTime(0, end);
+				env.set(end - EDGE_FADE_SECONDS, peak).ramp(end, 0);
 			}
 		}
 		src.onended = () => {
@@ -183,16 +191,17 @@ var SampleInstrument = class {
 			release(time) {
 				if (z.mode === "oneshot" || time >= handle.end) return;
 				const stopAt = Math.max(time, t) + z.release;
-				fadeOut(g.gain, Math.max(time, t), z.release, peak);
+				fadeOut(g.gain, Math.max(time, t), z.release, env);
 				src.stop(stopAt);
 				handle.end = Math.min(handle.end, stopAt);
 			},
-			stop(time) {
+			stop(time, fade = STOP_FADE_SECONDS) {
 				if (time >= handle.end) return;
 				const at = Math.max(time, t);
-				fadeOut(g.gain, at, .005, peak);
-				src.stop(at + .006);
-				handle.end = at + .006;
+				const f = Math.max(.001, fade);
+				fadeOut(g.gain, at, f, env);
+				src.stop(at + f + .001);
+				handle.end = at + f + .001;
 			}
 		};
 		return handle;
@@ -331,4 +340,4 @@ function peakOf(channels) {
 	return p;
 }
 //#endregion
-export { repairZone as _, MAX_SAMPLE_SECONDS as a, decodeSample as c, MIN_LOOP_SECONDS as d, defaultZone as f, region as g, playbackRate as h, MAX_SAMPLE_BYTES as i, toAudioBuffer as l, parseNoteName as m, snapToZeroCrossing as n, SampleError as o, noteName as p, waveformPeaks as r, browserDecode as s, peakOf as t, SampleInstrument as u, velocityGain as v, zoneProblems as y };
+export { region as _, MAX_SAMPLE_SECONDS as a, zoneProblems as b, decodeSample as c, SampleInstrument as d, MIN_LOOP_SECONDS as f, playbackRate as g, parseNoteName as h, MAX_SAMPLE_BYTES as i, toAudioBuffer as l, noteName as m, snapToZeroCrossing as n, SampleError as o, defaultZone as p, waveformPeaks as r, browserDecode as s, peakOf as t, STOP_FADE_SECONDS as u, repairZone as v, velocityGain as y };

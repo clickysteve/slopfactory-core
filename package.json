@@ -1,6 +1,6 @@
 {
   "name": "@slopfactory/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Slop Factory Core: shared audio, sampling, DSP, rendering, WAV/ZIP export and storage for browser music applications.",
   "type": "module",
   "license": "MIT",

@@ -3,8 +3,11 @@
  * BaseAudioContext. One AudioBuffer is shared by every note (and by live and offline
  * contexts); each note only creates a buffer source, a gain and a panner.
  */
-import { fadeOut, type Instrument, type NoteHandle, type NoteRequest } from '../audio/instrument';
+import { fadeOut, GainEnvelope, type Instrument, type NoteHandle, type NoteRequest } from '../audio/instrument';
 import { EDGE_FADE_SECONDS, playbackRate, region, velocityGain, type SampleZone } from './zone';
+
+/** Default fade when a note is stopped (stealing, panic, choke): 5 ms, linear. */
+export const STOP_FADE_SECONDS = 0.005;
 
 export class SampleInstrument implements Instrument {
   constructor(readonly buffer: AudioBuffer, public zone: SampleZone) {}
@@ -27,11 +30,17 @@ export class SampleInstrument implements Instrument {
     pan.pan.value = z.pan;
     src.connect(g).connect(pan).connect(out);
 
+    // every gain change is mirrored in `env`, so release and stop fade from the true level
+    const env = new GainEnvelope();
     const fadeIn = r.trimmedStart ? EDGE_FADE_SECONDS : 0;
     if (fadeIn) {
       g.gain.setValueAtTime(0, t);
       g.gain.linearRampToValueAtTime(peak, t + fadeIn);
-    } else g.gain.setValueAtTime(peak, t);
+      env.set(t, 0).ramp(t + fadeIn, peak);
+    } else {
+      g.gain.setValueAtTime(peak, t);
+      env.set(t, peak);
+    }
 
     let end: number;
     if (z.mode === 'loop') {
@@ -47,6 +56,7 @@ export class SampleInstrument implements Instrument {
       if (r.trimmedEnd && length / rate > EDGE_FADE_SECONDS * 2) {
         g.gain.setValueAtTime(peak, end - EDGE_FADE_SECONDS);
         g.gain.linearRampToValueAtTime(0, end);
+        env.set(end - EDGE_FADE_SECONDS, peak).ramp(end, 0);
       }
     }
     src.onended = () => {
@@ -60,16 +70,17 @@ export class SampleInstrument implements Instrument {
       release(time: number): void {
         if (z.mode === 'oneshot' || time >= handle.end) return;
         const stopAt = Math.max(time, t) + z.release;
-        fadeOut(g.gain, Math.max(time, t), z.release, peak);
+        fadeOut(g.gain, Math.max(time, t), z.release, env);
         src.stop(stopAt);
         handle.end = Math.min(handle.end, stopAt);
       },
-      stop(time: number): void {
+      stop(time: number, fade = STOP_FADE_SECONDS): void {
         if (time >= handle.end) return;
         const at = Math.max(time, t);
-        fadeOut(g.gain, at, 0.005, peak);
-        src.stop(at + 0.006);
-        handle.end = at + 0.006;
+        const f = Math.max(0.001, fade);
+        fadeOut(g.gain, at, f, env);
+        src.stop(at + f + 0.001);
+        handle.end = at + f + 0.001;
       },
     };
     return handle;

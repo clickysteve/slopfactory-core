@@ -36,7 +36,8 @@ await build({
   },
 });
 
-// 2. self-contained runtime files (no imports): loaded by URL, not imported
+// 2. self-contained runtime files (no imports): loaded by URL, not imported, and copied into
+//    applications' builds as they are, so they are minified here
 for (const [entry, name] of [
   ['src/dsp/output/worklet.ts', 'output-fx-worklet'],
   ['src/dsp/transform/worker.ts', 'transform-worker'],
@@ -46,7 +47,7 @@ for (const [entry, name] of [
     build: {
       outDir: dist,
       emptyOutDir: false,
-      minify: false,
+      minify: true,
       sourcemap: false,
       target: 'es2022',
       lib: { entry, formats: ['es'], fileName: () => `${name}.js` },

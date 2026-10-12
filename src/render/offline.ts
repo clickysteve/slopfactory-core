@@ -11,7 +11,7 @@
  * Notes are scheduled in chunks at suspend() points, which also report progress and allow
  * cancellation. Nothing here touches a live AudioContext, a transport or MIDI.
  */
-import { NotePlayer, type ResolveInstrument } from '../audio/player';
+import { NotePlayer, type ResolveChoke, type ResolveInstrument } from '../audio/player';
 import { Mixer, type StripSettings } from '../audio/mixer';
 import { loadOutputFx } from '../dsp/output/node';
 import type { OutputFxSettings } from '../dsp/output/settings';
@@ -39,6 +39,14 @@ export interface RenderRequest {
   masterGain?: number;
   fxSeed?: number;
   resolve: ResolveInstrument;
+  /** choke-group membership of each note (the same function live playback gives its NotePlayer) */
+  choke?: ResolveChoke;
+  /**
+   * The application's own nodes after the master (for example a master compressor), built in
+   * the render's context: connect them to `master` and return the last one. Applied to the
+   * master output only, never to stems.
+   */
+  masterInsert?: (ctx: BaseAudioContext, master: AudioNode) => AudioNode;
   /** output-processor worklet URL; without it processing is skipped (and reported) */
   fxModuleUrl?: string;
   maxPerVoice?: number;
@@ -139,9 +147,10 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   });
   const merger = ctx.createChannelMerger(channels);
   merger.channelInterpretation = 'discrete';
+  const masterOut = needsAll && req.masterInsert ? req.masterInsert(ctx, mixer.output) : mixer.output;
   group.forEach((o, k) => {
     const split = ctx.createChannelSplitter(2);
-    const src = o.kind === 'master' ? mixer.output : o.processed ? mixer.processedTap(o.voice!) : mixer.dryTap(o.voice!);
+    const src = o.kind === 'master' ? masterOut : o.processed ? mixer.processedTap(o.voice!) : mixer.dryTap(o.voice!);
     src.connect(split);
     split.connect(merger, 0, 2 * k);
     split.connect(merger, 1, 2 * k + 1);
@@ -151,9 +160,10 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   ctx.destination.channelInterpretation = 'discrete';
   merger.connect(ctx.destination);
 
-  const player = new NotePlayer(ctx, mixer, req.resolve, { maxPerVoice: req.maxPerVoice });
+  const player = new NotePlayer(ctx, mixer, req.resolve, { maxPerVoice: req.maxPerVoice, choke: req.choke });
   const tm = new TimeMap(req.timeline.tempo);
-  const events = req.timeline.events.filter((e) => needed.has(e.voice));
+  // Voices outside this pass still choke the ones inside it, so their notes are kept for that.
+  const events = req.choke ? req.timeline.events : req.timeline.events.filter((e) => needed.has(e.voice));
   let next = 0;
   let cancelled = false;
   const schedule = (until: number) => {
@@ -165,10 +175,15 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
       if (cancelled) continue;
       if (e.type === 'note') {
         const n = e as NoteEvent;
+        const note = { time: t, pitch: n.pitch, velocity: n.velocity, channel: n.channel, instrument: n.instrument };
+        if (!needed.has(n.voice)) {
+          player.chokeOnly(n.voice, note);
+          continue;
+        }
         const key = `n${next}`;
-        player.noteOn(key, n.voice, { time: t, pitch: n.pitch, velocity: n.velocity, channel: n.channel, instrument: n.instrument });
+        player.noteOn(key, n.voice, note);
         player.noteOff(key, tm.seconds(n.tick + n.duration));
-      } else req.onControl?.(e, t, mixer);
+      } else if (needed.has(e.voice)) req.onControl?.(e, t, mixer);
     }
   };
   const quantum = 128 / sr;
@@ -181,6 +196,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
       if (req.signal?.aborted && !cancelled) {
         cancelled = true;
         mixer.output.disconnect();
+        masterOut.disconnect();
         for (const o of group) if (o.kind === 'stem') (o.processed ? mixer.processedTap(o.voice!) : mixer.dryTap(o.voice!)).disconnect();
       }
       schedule(at + chunk);

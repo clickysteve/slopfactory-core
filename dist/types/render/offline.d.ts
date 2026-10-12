@@ -11,7 +11,7 @@
  * Notes are scheduled in chunks at suspend() points, which also report progress and allow
  * cancellation. Nothing here touches a live AudioContext, a transport or MIDI.
  */
-import { type ResolveInstrument } from '../audio/player';
+import { type ResolveChoke, type ResolveInstrument } from '../audio/player';
 import { Mixer, type StripSettings } from '../audio/mixer';
 import type { OutputFxSettings } from '../dsp/output/settings';
 import { type ControlEvent, type Timeline } from '../events/timeline';
@@ -34,6 +34,14 @@ export interface RenderRequest {
     masterGain?: number;
     fxSeed?: number;
     resolve: ResolveInstrument;
+    /** choke-group membership of each note (the same function live playback gives its NotePlayer) */
+    choke?: ResolveChoke;
+    /**
+     * The application's own nodes after the master (for example a master compressor), built in
+     * the render's context: connect them to `master` and return the last one. Applied to the
+     * master output only, never to stems.
+     */
+    masterInsert?: (ctx: BaseAudioContext, master: AudioNode) => AudioNode;
     /** output-processor worklet URL; without it processing is skipped (and reported) */
     fxModuleUrl?: string;
     maxPerVoice?: number;

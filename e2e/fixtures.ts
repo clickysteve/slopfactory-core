@@ -123,3 +123,31 @@ export const rms = (x: Float32Array, from = 0, to = x.length) => {
 export const peak = (x: Float32Array) => x.reduce((m, v) => Math.max(m, Math.abs(v)), 0);
 /** First frame whose absolute value exceeds a threshold. */
 export const onset = (x: Float32Array, threshold = 0.01) => x.findIndex((v) => Math.abs(v) > threshold);
+
+/** Deterministic white noise (LCG), for hat-like test samples. */
+function noise(seed: number) {
+  let s = seed >>> 0;
+  return () => {
+    s = (Math.imul(s, 1664525) + 1013904223) >>> 0;
+    return s / 0x80000000 - 1;
+  };
+}
+
+/** 1.5 s stereo "open hat": decaying noise, different noise left and right. */
+export const openHatWav = () => {
+  const l = noise(1);
+  const r = noise(2);
+  return wav16([tone(1.5, (_, t) => 0.5 * Math.exp(-t * 2) * l()), tone(1.5, (_, t) => 0.5 * Math.exp(-t * 2) * r())]);
+};
+
+/** 0.08 s mono "closed hat": fast-decaying noise. */
+export const closedHatWav = () => {
+  const n = noise(3);
+  return wav16([tone(0.08, (_, t) => 0.6 * Math.exp(-t * 60) * n())]);
+};
+
+/** 0.25 s snare-like hit: a 190 Hz tone plus noise. */
+export const snareWav = () => {
+  const n = noise(4);
+  return wav16([tone(0.25, (_, t) => Math.exp(-t * 18) * (0.5 * Math.sin(2 * Math.PI * 190 * t) + 0.4 * n()))]);
+};

@@ -40,13 +40,15 @@ Everything below, plus `CORE_VERSION` (the package version string).
 |---|---|
 | `interface Instrument { start(ctx, out, note: NoteRequest): NoteHandle \| null }` | any sound source |
 | `interface NoteRequest { time; pitch; velocity; channel? }` | |
-| `interface NoteHandle { release(time); stop(time); readonly end }` | `release` = note-off (one-shots ignore it); `stop` = quick fade (stealing, panic) |
-| `fadeOut(param, time, seconds, holdValue)` | click-free ramp to zero from whatever the param is doing |
+| `interface NoteHandle { release(time); stop(time, fade?); readonly end }` | `release` = note-off (one-shots ignore it); `stop` = quick fade (stealing, panic, chokes) |
+| `fadeOut(param, time, seconds, level)` | linear fade to zero starting at `time` from `level` (a number, or a `GainEnvelope` that is updated) |
+| `class GainEnvelope`: `set(t, v)`, `ramp(t, v)`, `cancel(t)`, `at(t)` | a record of a gain's scheduled automation, so fades scheduled ahead start from the true level |
 | `class Mixer(ctx, MixerOptions)` | voice strips and master; `input(voice)`, `processedTap(voice)`, `dryTap(voice)`, `setStrip`, `setMasterFx`, `setMasterGain`, `resetFx(at)`, `processing`, `output`, `dispose()` |
 | `interface MixerOptions { voices; strips?; masterFx?; masterGain?; fxAvailable; seed?; dryTaps? }` | |
 | `interface StripSettings { gain; pan; mute; solo; fx }`, `defaultStrip()`, `stripSeed(seed, index)` | |
-| `class NotePlayer(ctx, mixer, resolve, { maxPerVoice? })` | `noteOn(key, voice, note)`, `noteOff(key, time)`, `releaseAll(time)`, `stopAll(time)`, `activeCount(voice, time)` |
+| `class NotePlayer(ctx, mixer, resolve, { maxPerVoice?, choke? })` | `noteOn(key, voice, note)`, `noteOff(key, time)`, `chokeOnly(voice, note)`, `releaseAll(time)`, `stopAll(time)`, `activeCount(voice, time)` |
 | `interface NoteStart extends NoteRequest { instrument? }`, `type ResolveInstrument = (voice, note) => Instrument \| null` | |
+| `interface ChokeSettings { group; cuts?; cutBy?; fade? }`, `type ResolveChoke = (voice, note) => ChokeSettings \| null`, `DEFAULT_CHOKE_FADE` (0.005 s) | choke groups (see `docs/ARCHITECTURE.md`, section 5) |
 
 ## sampler
 
@@ -56,7 +58,7 @@ Everything below, plus `CORE_VERSION` (the package version string).
 | `defaultZone()`, `repairZone(json)`, `zoneProblems(zone, duration)` | |
 | `playbackRate(zone, pitch)`, `velocityGain(zone, velocity)`, `region(zone, duration)`, `MIN_LOOP_SECONDS` | |
 | `noteName(n)`, `parseNoteName(s)` | `60` ↔ `C4` |
-| `class SampleInstrument(buffer, zone)` | polyphonic playback of one AudioBuffer (transposition by playback rate; mono samples panned with equal power) |
+| `class SampleInstrument(buffer, zone)`, `STOP_FADE_SECONDS` | polyphonic playback of one AudioBuffer (transposition by playback rate; mono samples panned with equal power) |
 | `decodeSample(bytes, name, opts?)` → `DecodedSample`, `browserDecode(bytes)`, `toAudioBuffer(audio)` | WAV/AIFF by Good Bits' parsers at native rate; other formats by the browser; size and length limits (`MAX_SAMPLE_BYTES`, `MAX_SAMPLE_SECONDS`) |
 | `class SampleError { code: SampleErrorCode }` | `empty`, `too-large`, `too-long`, `unsupported`, `corrupt`, `decode` |
 | `snapToZeroCrossing(audio, seconds, window?)`, `waveformPeaks(audio, bins)`, `peakOf(channels)` | |
@@ -87,7 +89,7 @@ Everything below, plus `CORE_VERSION` (the package version string).
 | Export | Summary |
 |---|---|
 | `renderTimeline(RenderRequest)` → `Promise<RenderResult>` | master and/or stems, aligned, one shared tail |
-| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; fxModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
+| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; choke?; masterInsert?; fxModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
 | `interface StemRequest { voice; processed }` | |
 | `interface RenderResult { sampleRate; frames; seconds; musicSeconds; outputs: RenderOutput[]; renders; processed }` | |
 | `renderLength(timeline, tail, rate)`, `planRenders(...)`, `EXPORT_SAMPLE_RATE` (44100), `MAX_RENDER_SECONDS` (20 min), `class RenderCancelled` | |

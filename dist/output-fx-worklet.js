@@ -1,6 +1,5 @@
 //#region src/dsp/vendor/goodbits/js/outputstage.js
-/** Output stage character presets - order matches the UI select. "clean" is the off/bypass state. */
-var OUTPUT_STAGES = [
+var e = [
 	{
 		key: "clean",
 		label: "Clean",
@@ -56,9 +55,7 @@ var OUTPUT_STAGES = [
 		label: "Phone Bus",
 		description: "voicemail bandpass + mu-law"
 	}
-];
-/** Saturation drive types - order matches the UI select. */
-var DRIVE_TYPES = [
+], t = [
 	{
 		key: "tape",
 		label: "Tape",
@@ -80,571 +77,283 @@ var DRIVE_TYPES = [
 		description: "extreme, broken-speaker fuzz"
 	}
 ];
-function makeOnePoleLP(fs, fc) {
-	const a = 1 - Math.exp(-2 * Math.PI * fc / fs);
-	let y = 0;
-	return (x) => {
-		y += a * (x - y);
-		return y;
-	};
+function n(e, t) {
+	let n = 1 - Math.exp(-2 * Math.PI * t / e), r = 0;
+	return (e) => (r += n * (e - r), r);
 }
-function makeOnePoleHP(fs, fc) {
-	const lp = makeOnePoleLP(fs, fc);
-	return (x) => x - lp(x);
+function r(e, t) {
+	let r = n(e, t);
+	return (e) => e - r(e);
 }
-/** RBJ cookbook peaking EQ. Returns {L, R} process functions with independent channel state. */
-function makeBiquadPeak(fs, freq, Q, gainDb) {
-	const w0 = 2 * Math.PI * freq / fs;
-	const cosW0 = Math.cos(w0);
-	const sinW0 = Math.sin(w0);
-	const A = Math.pow(10, gainDb / 40);
-	const alpha = sinW0 / (2 * Q);
-	const a0d = 1 + alpha / A;
-	const b0 = (1 + alpha * A) / a0d;
-	const b1 = -2 * cosW0 / a0d;
-	const b2 = (1 - alpha * A) / a0d;
-	const a1 = -2 * cosW0 / a0d;
-	const a2 = (1 - alpha / A) / a0d;
-	let z1L = 0, z2L = 0, z1R = 0, z2R = 0;
+function i(e, t, n, r) {
+	let i = 2 * Math.PI * t / e, a = Math.cos(i), o = Math.sin(i), s = 10 ** (r / 40), c = o / (2 * n), l = 1 + c / s, u = (1 + c * s) / l, d = -2 * a / l, f = (1 - c * s) / l, p = -2 * a / l, m = (1 - c / s) / l, h = 0, g = 0, _ = 0, v = 0;
 	return {
-		L(x) {
-			const y = b0 * x + z1L;
-			z1L = b1 * x - a1 * y + z2L;
-			z2L = b2 * x - a2 * y;
-			return y;
+		L(e) {
+			let t = u * e + h;
+			return h = d * e - p * t + g, g = f * e - m * t, t;
 		},
-		R(x) {
-			const y = b0 * x + z1R;
-			z1R = b1 * x - a1 * y + z2R;
-			z2R = b2 * x - a2 * y;
-			return y;
+		R(e) {
+			let t = u * e + _;
+			return _ = d * e - p * t + v, v = f * e - m * t, t;
 		}
 	};
 }
-/** RBJ cookbook low shelf. */
-function makeBiquadLowShelf(fs, freq, gainDb, slope = 1) {
-	const w0 = 2 * Math.PI * freq / fs;
-	const cosW0 = Math.cos(w0);
-	const sinW0 = Math.sin(w0);
-	const A = Math.pow(10, gainDb / 40);
-	const alpha = sinW0 / 2 * Math.sqrt((A + 1 / A) * (1 / slope - 1) + 2);
-	const sqrtA2alpha = 2 * Math.sqrt(A) * alpha;
-	const a0d = A + 1 + (A - 1) * cosW0 + sqrtA2alpha;
-	const b0 = A * (A + 1 - (A - 1) * cosW0 + sqrtA2alpha) / a0d;
-	const b1 = 2 * A * (A - 1 - (A + 1) * cosW0) / a0d;
-	const b2 = A * (A + 1 - (A - 1) * cosW0 - sqrtA2alpha) / a0d;
-	const a1 = -2 * (A - 1 + (A + 1) * cosW0) / a0d;
-	const a2 = (A + 1 + (A - 1) * cosW0 - sqrtA2alpha) / a0d;
-	let z1L = 0, z2L = 0, z1R = 0, z2R = 0;
+function a(e, t, n, r = 1) {
+	let i = 2 * Math.PI * t / e, a = Math.cos(i), o = Math.sin(i), s = 10 ** (n / 40), c = o / 2 * Math.sqrt((s + 1 / s) * (1 / r - 1) + 2), l = 2 * Math.sqrt(s) * c, u = s + 1 + (s - 1) * a + l, d = s * (s + 1 - (s - 1) * a + l) / u, f = 2 * s * (s - 1 - (s + 1) * a) / u, p = s * (s + 1 - (s - 1) * a - l) / u, m = -2 * (s - 1 + (s + 1) * a) / u, h = (s + 1 + (s - 1) * a - l) / u, g = 0, _ = 0, v = 0, y = 0;
 	return {
-		L(x) {
-			const y = b0 * x + z1L;
-			z1L = b1 * x - a1 * y + z2L;
-			z2L = b2 * x - a2 * y;
-			return y;
+		L(e) {
+			let t = d * e + g;
+			return g = f * e - m * t + _, _ = p * e - h * t, t;
 		},
-		R(x) {
-			const y = b0 * x + z1R;
-			z1R = b1 * x - a1 * y + z2R;
-			z2R = b2 * x - a2 * y;
-			return y;
+		R(e) {
+			let t = d * e + v;
+			return v = f * e - m * t + y, y = p * e - h * t, t;
 		}
 	};
 }
-/** Soft tanh-ish saturator with adjustable drive. */
-function softSat(x, drive = 1) {
-	return Math.tanh(x * drive) / Math.tanh(drive);
+function o(e, t = 1) {
+	return Math.tanh(e * t) / Math.tanh(t);
 }
-/** Short ring-buffer delay line for wow/flutter, read with linear interpolation at a fractional offset. */
-function makeShortDelay(capacity) {
-	const buf = new Float32Array(capacity);
-	let writePos = 0;
+function s(e) {
+	let t = new Float32Array(e), n = 0;
 	return {
-		write(x) {
-			buf[writePos] = x;
-			writePos = writePos + 1 >= capacity ? 0 : writePos + 1;
+		write(r) {
+			t[n] = r, n = n + 1 >= e ? 0 : n + 1;
 		},
-		read(delaySamples) {
-			let pos = writePos - delaySamples;
-			while (pos < 0) pos += capacity;
-			const i0 = Math.floor(pos);
-			const i1 = i0 + 1 >= capacity ? 0 : i0 + 1;
-			const frac = pos - i0;
-			return buf[i0] + frac * (buf[i1] - buf[i0]);
+		read(r) {
+			let i = n - r;
+			for (; i < 0;) i += e;
+			let a = Math.floor(i), o = a + 1 >= e ? 0 : a + 1, s = i - a;
+			return t[a] + s * (t[o] - t[a]);
 		}
 	};
 }
-/** Peak-detector envelope follower with attack/release in ms. */
-function makeEnvFollower(fs, attMs, relMs) {
-	const aAtt = Math.exp(-1 / (.001 * attMs * fs));
-	const aRel = Math.exp(-1 / (.001 * relMs * fs));
-	let env = 0;
-	return (x) => {
-		const ax = Math.abs(x);
-		const a = ax > env ? aAtt : aRel;
-		env = a * env + (1 - a) * ax;
-		return env;
+function c(e, t, n) {
+	let r = Math.exp(-1 / (.001 * t * e)), i = Math.exp(-1 / (.001 * n * e)), a = 0;
+	return (e) => {
+		let t = Math.abs(e), n = t > a ? r : i;
+		return a = n * a + (1 - n) * t, a;
 	};
 }
-/**
-* xorshift32 RNG, seeded per call so re-processing the same audio is reproducible within one run.
-* A second, deliberately separate implementation from js/dsp/stretch/rng.js's mulberry32-based
-* makeRng(): that one drives the stretch engines' {next,signed,range,int,bool} API from a
-* number-or-string seed shared across a whole engine call, while this one is called per SAMPLE in
-* hot loops below (wow/flutter/hiss/click generation, potentially millions of calls per file) and
-* only ever needs two cheap accessors. Not merged into one implementation: since the two use
-* different underlying algorithms, unifying them would silently change the exact noise sequence -
-* and therefore the audible lo-fi output - for every existing seed, which isn't a change to make as
-* a side effect of deduplication.
-*/
-function makeRng(seed) {
-	let s = seed >>> 0 || 3405649328;
-	function next() {
-		s ^= s << 13;
-		s >>>= 0;
-		s ^= s >>> 17;
-		s ^= s << 5;
-		s >>>= 0;
-		return s;
+function l(e) {
+	let t = e >>> 0 || 3405649328;
+	function n() {
+		return t ^= t << 13, t >>>= 0, t ^= t >>> 17, t ^= t << 5, t >>>= 0, t;
 	}
 	return {
-		white: () => (next() | 0) / 2147483648,
-		uniform: () => (next() & 2147483647) / 2147483648
+		white: () => (n() | 0) / 2147483648,
+		uniform: () => (n() & 2147483647) / 2147483648
 	};
 }
-var MODE_FACTORIES = {
-	cassette(fs, rng) {
-		const hp60 = makeOnePoleHP(fs, 60);
-		const lp9k = makeOnePoleLP(fs, 9e3);
-		const hissLp = makeOnePoleLP(fs, 6e3);
-		const wowDelay = makeShortDelay(128);
-		let wowPhase = 0, flutterPhase = 0;
-		const twoPi = Math.PI * 2;
-		return (L, R) => {
-			wowDelay.write(.5 * (L + R));
-			wowPhase += twoPi * .4 / fs;
-			flutterPhase += twoPi * 8 / fs;
-			if (wowPhase > twoPi) wowPhase -= twoPi;
-			if (flutterPhase > twoPi) flutterPhase -= twoPi;
-			const wow = Math.sin(wowPhase) * 10;
-			const flut = Math.sin(flutterPhase) * 3;
-			const jit = rng.white() * .8;
-			const dly = Math.max(1, 24 + wow + flut + jit);
-			const wobble = wowDelay.read(dly);
-			let l = .75 * L + .25 * wobble;
-			let r = .75 * R + .25 * wobble;
-			l = hp60(l);
-			r = hp60(r);
-			l = lp9k(l);
-			r = lp9k(r);
-			const hiss = hissLp(rng.white()) * .008;
-			l += hiss;
-			r += hiss;
-			return [softSat(l, 1.8), softSat(r, 1.8)];
+var u = {
+	cassette(e, t) {
+		let i = r(e, 60), a = n(e, 9e3), c = n(e, 6e3), l = s(128), u = 0, d = 0, f = Math.PI * 2;
+		return (n, r) => {
+			l.write(.5 * (n + r)), u += f * .4 / e, d += f * 8 / e, u > f && (u -= f), d > f && (d -= f);
+			let s = Math.sin(u) * 10, p = Math.sin(d) * 3, m = t.white() * .8, h = Math.max(1, 24 + s + p + m), g = l.read(h), _ = .75 * n + .25 * g, v = .75 * r + .25 * g;
+			_ = i(_), v = i(v), _ = a(_), v = a(v);
+			let y = c(t.white()) * .008;
+			return _ += y, v += y, [o(_, 1.8), o(v, 1.8)];
 		};
 	},
-	reelToReel(fs, rng) {
-		const shelf = makeBiquadLowShelf(fs, 80, 2, 1);
-		const lp14k = makeOnePoleLP(fs, 14e3);
-		const wowDelay = makeShortDelay(128);
-		let wowPhase = 0;
-		const twoPi = Math.PI * 2;
-		return (L, R) => {
-			wowDelay.write(.5 * (L + R));
-			wowPhase += twoPi * .25 / fs;
-			if (wowPhase > twoPi) wowPhase -= twoPi;
-			const wow = Math.sin(wowPhase) * 5;
-			const dly = Math.max(1, 16 + wow);
-			const wobble = wowDelay.read(dly);
-			let l = .85 * L + .15 * wobble;
-			let r = .85 * R + .15 * wobble;
-			l = shelf.L(l);
-			r = shelf.R(r);
-			l = lp14k(l);
-			r = lp14k(r);
-			return [softSat(l, 1.5), softSat(r, 1.5)];
+	reelToReel(e, t) {
+		let r = a(e, 80, 2, 1), i = n(e, 14e3), c = s(128), l = 0, u = Math.PI * 2;
+		return (t, n) => {
+			c.write(.5 * (t + n)), l += u * .25 / e, l > u && (l -= u);
+			let a = Math.sin(l) * 5, s = Math.max(1, 16 + a), d = c.read(s), f = .85 * t + .15 * d, p = .85 * n + .15 * d;
+			return f = r.L(f), p = r.R(p), f = i(f), p = i(p), [o(f, 1.5), o(p, 1.5)];
 		};
 	},
-	damaged(fs, rng) {
-		const lp7k = makeOnePoleLP(fs, 7e3);
-		const hissLp = makeOnePoleLP(fs, 4e3);
-		const agc = makeEnvFollower(fs, 5, 60);
-		const wowDelay = makeShortDelay(160);
-		let wowPhase = 0, flutterPhase = 0, skipCountdown = 0, skipHoldSamples = 0;
-		const twoPi = Math.PI * 2;
-		return (L, R) => {
-			wowDelay.write(.5 * (L + R));
-			wowPhase += twoPi * .6 / fs;
-			flutterPhase += twoPi * 11 / fs;
-			if (wowPhase > twoPi) wowPhase -= twoPi;
-			if (flutterPhase > twoPi) flutterPhase -= twoPi;
-			const wow = Math.sin(wowPhase) * 18;
-			const flut = Math.sin(flutterPhase) * 6 * (.5 + .5 * Math.sin(wowPhase * 1.7));
-			const jit = rng.white() * 3;
-			const dly = Math.max(1, 60 + wow + flut + jit);
-			const wobble = wowDelay.read(dly);
-			let l = .6 * L + .4 * wobble;
-			let r = .6 * R + .4 * wobble;
-			l = lp7k(l);
-			r = lp7k(r);
-			const duck = 1 / (1 + 4 * agc(.5 * (l + r)));
-			l *= duck;
-			r *= duck;
-			const hiss = hissLp(rng.white()) * .04;
-			l += hiss;
-			r += hiss;
-			if (--skipCountdown <= 0) {
-				skipCountdown = 1 + Math.floor(rng.uniform() * fs * 2);
-				skipHoldSamples = Math.floor(rng.uniform() * .012 * fs);
+	damaged(e, t) {
+		let r = n(e, 7e3), i = n(e, 4e3), a = c(e, 5, 60), o = s(160), l = 0, u = 0, d = 0, f = 0, p = Math.PI * 2;
+		return (n, s) => {
+			o.write(.5 * (n + s)), l += p * .6 / e, u += p * 11 / e, l > p && (l -= p), u > p && (u -= p);
+			let c = Math.sin(l) * 18, m = Math.sin(u) * 6 * (.5 + .5 * Math.sin(l * 1.7)), h = t.white() * 3, g = Math.max(1, 60 + c + m + h), _ = o.read(g), v = .6 * n + .4 * _, y = .6 * s + .4 * _;
+			v = r(v), y = r(y);
+			let b = 1 / (1 + 4 * a(.5 * (v + y)));
+			v *= b, y *= b;
+			let x = i(t.white()) * .04;
+			return v += x, y += x, --d <= 0 && (d = 1 + Math.floor(t.uniform() * e * 2), f = Math.floor(t.uniform() * .012 * e)), f > 0 && (v *= .25, y *= .25, f--), [v, y];
+		};
+	},
+	vinyl(e, t) {
+		let n = r(e, 30), a = i(e, 8e3, .7, 1.5), o = s(64), c = 0, l = 0, u = Math.PI * 2;
+		return (r, i) => {
+			o.write(.5 * (r + i)), c += u * .55 / e, c > u && (c -= u);
+			let s = Math.sin(c) * 4, d = Math.max(1, 8 + s), f = o.read(d), p = .88 * r + .12 * f, m = .88 * i + .12 * f;
+			p = a.L(p), m = a.R(m), p = n(p), m = n(m);
+			let h = t.white() * .007;
+			if (p += h, m += h, --l <= 0) {
+				l = 1 + Math.floor(t.uniform() * e * .5);
+				let n = .08 + .22 * t.uniform(), r = t.uniform() < .5 ? -1 : 1;
+				p += n * r, m += n * r;
 			}
-			if (skipHoldSamples > 0) {
-				l *= .25;
-				r *= .25;
-				skipHoldSamples--;
+			return [p, m];
+		};
+	},
+	boombox(e) {
+		let t = r(e, 150), a = n(e, 8e3), s = i(e, 1200, 1.2, 4);
+		return (e, n) => {
+			let r = t(e), i = t(n);
+			r = a(r), i = a(i), r = s.L(r), i = s.R(i);
+			let c = .5 * (r + i);
+			return r = .7 * r + .3 * c, i = .7 * i + .3 * c, [o(r, 1.3), o(i, 1.3)];
+		};
+	},
+	amRadio(e, t) {
+		let i = r(e, 300), a = n(e, 4e3), o = n(e, 3500), s = c(e, 8, 220), l = (e) => {
+			let t = .02;
+			return e > t ? e - t * .5 : e < -.02 ? e + t * .5 : e * .5;
+		}, u = 0, d = 0, f = 0, p = 1 - Math.exp(-1 / (.05 * e));
+		return (n, r) => {
+			let c = i(n), m = i(r);
+			c = a(c), m = a(m), c = l(c), m = l(m);
+			let h = .5 * (c + m);
+			c = .3 * c + .7 * h, m = .3 * m + .7 * h;
+			let g = 1 / (1 + 8 * s(h));
+			--f <= 0 && (f = Math.floor(e * (.25 + t.uniform() * .55)), d = t.uniform() < .85 ? .1 + t.uniform() * .25 : .5 + t.uniform() * .5), u += p * (d - u);
+			let _ = o(t.white()) * ((.0035 + .018 * u) * g);
+			return c += _, m += _, [c, m];
+		};
+	},
+	vhs(e, t) {
+		let i = r(e, 50), a = n(e, 12e3), o = c(e, 3, 80), s = 0;
+		return (n, r) => {
+			let c = i(n), l = i(r);
+			c = a(c), l = a(l);
+			let u = 1 / (1 + 2.5 * o(.5 * (c + l)));
+			if (c *= u, l *= u, --s <= 0) {
+				s = 1 + Math.floor(t.uniform() * e * 1.8);
+				let n = .02 * (t.uniform() < .5 ? -1 : 1);
+				c += n, l += n;
 			}
-			return [l, r];
+			return [c, l];
 		};
 	},
-	vinyl(fs, rng) {
-		const riaaHp = makeOnePoleHP(fs, 30);
-		const tilt = makeBiquadPeak(fs, 8e3, .7, 1.5);
-		const wowDelay = makeShortDelay(64);
-		let vinylPhase = 0, clickCountdown = 0;
-		const twoPi = Math.PI * 2;
-		return (L, R) => {
-			wowDelay.write(.5 * (L + R));
-			vinylPhase += twoPi * .55 / fs;
-			if (vinylPhase > twoPi) vinylPhase -= twoPi;
-			const wow = Math.sin(vinylPhase) * 4;
-			const dly = Math.max(1, 8 + wow);
-			const wobble = wowDelay.read(dly);
-			let l = .88 * L + .12 * wobble;
-			let r = .88 * R + .12 * wobble;
-			l = tilt.L(l);
-			r = tilt.R(r);
-			l = riaaHp(l);
-			r = riaaHp(r);
-			const surface = rng.white() * .007;
-			l += surface;
-			r += surface;
-			if (--clickCountdown <= 0) {
-				clickCountdown = 1 + Math.floor(rng.uniform() * fs * .5);
-				const popAmp = .08 + .22 * rng.uniform();
-				const popSign = rng.uniform() < .5 ? -1 : 1;
-				l += popAmp * popSign;
-				r += popAmp * popSign;
-			}
-			return [l, r];
+	busComp(e) {
+		let t = c(e, 12, 180), n = 1.05;
+		return (e, r) => {
+			let i = t(.5 * (e + r)), a = 1 / (1 + 2 * Math.max(0, i - .25));
+			return [e * a * n, r * a * n];
 		};
 	},
-	boombox(fs) {
-		const hp150 = makeOnePoleHP(fs, 150);
-		const lp8k = makeOnePoleLP(fs, 8e3);
-		const honk = makeBiquadPeak(fs, 1200, 1.2, 4);
-		return (L, R) => {
-			let l = hp150(L);
-			let r = hp150(R);
-			l = lp8k(l);
-			r = lp8k(r);
-			l = honk.L(l);
-			r = honk.R(r);
-			const mono = .5 * (l + r);
-			l = .7 * l + .3 * mono;
-			r = .7 * r + .3 * mono;
-			return [softSat(l, 1.3), softSat(r, 1.3)];
+	lathe(e, t) {
+		let r = i(e, 8e3, .7, 3), a = n(e, 15e3), s = 0, c = 0, l = 0, u = 0;
+		return (n, i) => {
+			let d = r.L(n), f = r.R(i);
+			return d = a(d), f = a(f), d = o(d, 1.4), f = o(f, 1.4), --s <= 0 && (s = 1 + Math.floor(t.uniform() * e * 8), c = Math.floor(t.uniform() * .006 * e), l = d, u = f), c > 0 && (d = l, f = u, c--), [d, f];
 		};
 	},
-	amRadio(fs, rng) {
-		const hp300 = makeOnePoleHP(fs, 300);
-		const lp4k = makeOnePoleLP(fs, 4e3);
-		const hissLp = makeOnePoleLP(fs, 3500);
-		const progEnv = makeEnvFollower(fs, 8, 220);
-		const kink = (x) => {
-			const t = .02;
-			if (x > t) return x - t * .5;
-			if (x < -.02) return x + t * .5;
-			return x * .5;
+	phone(e) {
+		let t = r(e, 400), i = n(e, 3400), a = (e) => {
+			let t = (e >= 0 ? 1 : -1) * (Math.log(1 + 32 * Math.abs(e)) / Math.log(33)), n = Math.round(t * 8) / 8;
+			return (n >= 0 ? 1 : -1) * ((33 ** Math.abs(n) - 1) / 32);
 		};
-		let washEnv = 0, washTarget = 0, washHold = 0;
-		const washA = 1 - Math.exp(-1 / (.05 * fs));
-		return (L, R) => {
-			let l = hp300(L);
-			let r = hp300(R);
-			l = lp4k(l);
-			r = lp4k(r);
-			l = kink(l);
-			r = kink(r);
-			const mono = .5 * (l + r);
-			l = .3 * l + .7 * mono;
-			r = .3 * r + .7 * mono;
-			const duck = 1 / (1 + 8 * progEnv(mono));
-			if (--washHold <= 0) {
-				washHold = Math.floor(fs * (.25 + rng.uniform() * .55));
-				washTarget = rng.uniform() < .85 ? .1 + rng.uniform() * .25 : .5 + rng.uniform() * .5;
-			}
-			washEnv += washA * (washTarget - washEnv);
-			const hiss = hissLp(rng.white()) * ((.0035 + .018 * washEnv) * duck);
-			l += hiss;
-			r += hiss;
-			return [l, r];
-		};
-	},
-	vhs(fs, rng) {
-		const hp50 = makeOnePoleHP(fs, 50);
-		const lp12k = makeOnePoleLP(fs, 12e3);
-		const agc = makeEnvFollower(fs, 3, 80);
-		let clickCountdown = 0;
-		return (L, R) => {
-			let l = hp50(L);
-			let r = hp50(R);
-			l = lp12k(l);
-			r = lp12k(r);
-			const duck = 1 / (1 + 2.5 * agc(.5 * (l + r)));
-			l *= duck;
-			r *= duck;
-			if (--clickCountdown <= 0) {
-				clickCountdown = 1 + Math.floor(rng.uniform() * fs * 1.8);
-				const tick = .02 * (rng.uniform() < .5 ? -1 : 1);
-				l += tick;
-				r += tick;
-			}
-			return [l, r];
-		};
-	},
-	busComp(fs) {
-		const agc = makeEnvFollower(fs, 12, 180);
-		const thr = .25;
-		const make = 1.05;
-		return (L, R) => {
-			const env = agc(.5 * (L + R));
-			const gr = 1 / (1 + 2 * Math.max(0, env - thr));
-			return [L * gr * make, R * gr * make];
-		};
-	},
-	lathe(fs, rng) {
-		const boost = makeBiquadPeak(fs, 8e3, .7, 3);
-		const lp15k = makeOnePoleLP(fs, 15e3);
-		let skipCountdown = 0, skipHoldSamples = 0, skipHoldL = 0, skipHoldR = 0;
-		return (L, R) => {
-			let l = boost.L(L);
-			let r = boost.R(R);
-			l = lp15k(l);
-			r = lp15k(r);
-			l = softSat(l, 1.4);
-			r = softSat(r, 1.4);
-			if (--skipCountdown <= 0) {
-				skipCountdown = 1 + Math.floor(rng.uniform() * fs * 8);
-				skipHoldSamples = Math.floor(rng.uniform() * .006 * fs);
-				skipHoldL = l;
-				skipHoldR = r;
-			}
-			if (skipHoldSamples > 0) {
-				l = skipHoldL;
-				r = skipHoldR;
-				skipHoldSamples--;
-			}
-			return [l, r];
-		};
-	},
-	phone(fs) {
-		const hp400 = makeOnePoleHP(fs, 400);
-		const lp3k4 = makeOnePoleLP(fs, 3400);
-		const mulawQuant = (x) => {
-			const mu = 32;
-			const c = (x >= 0 ? 1 : -1) * (Math.log(1 + mu * Math.abs(x)) / Math.log(33));
-			const q = Math.round(c * 8) / 8;
-			return (q >= 0 ? 1 : -1) * ((Math.pow(33, Math.abs(q)) - 1) / mu);
-		};
-		return (L, R) => {
-			let l = hp400(L);
-			let r = hp400(R);
-			l = lp3k4(l);
-			r = lp3k4(r);
-			l = mulawQuant(l);
-			r = mulawQuant(r);
-			const mono = .5 * (l + r);
-			l = .2 * l + .8 * mono;
-			r = .2 * r + .8 * mono;
-			return [l, r];
+		return (e, n) => {
+			let r = t(e), o = t(n);
+			r = i(r), o = i(o), r = a(r), o = a(o);
+			let s = .5 * (r + o);
+			return r = .2 * r + .8 * s, o = .2 * o + .8 * s, [r, o];
 		};
 	}
 };
-function driveShapeFor(key) {
-	switch (key) {
-		case "tube": return (x, g, d) => {
-			const bias = .2 * d;
-			return Math.tanh((x + bias) * g) - Math.tanh(bias * g);
+function d(e) {
+	switch (e) {
+		case "tube": return (e, t, n) => {
+			let r = .2 * n;
+			return Math.tanh((e + r) * t) - Math.tanh(r * t);
 		};
-		case "diode": return (x, g) => Math.max(-1, Math.min(1, x * g));
-		case "fuzz": return (x, g) => {
-			const v = x * g;
-			return v > 0 ? Math.tanh(v * 3) : Math.max(-1, Math.min(0, v));
+		case "diode": return (e, t) => Math.max(-1, Math.min(1, e * t));
+		case "fuzz": return (e, t) => {
+			let n = e * t;
+			return n > 0 ? Math.tanh(n * 3) : Math.max(-1, Math.min(0, n));
 		};
-		default: return (x, g) => Math.tanh(x * g);
+		default: return (e, t) => Math.tanh(e * t);
 	}
 }
 //#endregion
 //#region src/dsp/output/settings.ts
-/**
-* Output-processor settings: what a voice or master processor does to audio as it plays.
-*
-* The stage layout is Good Bits' lo-fi chain (`applyLofiChain`: output stage, then drive, then
-* crunch) with the same field names, plus an input and output gain and an optional Tone stage
-* (Good Bits' one-pole low-pass). Plain JSON, safe to store in any application's project file.
-*/
-var OUTPUT_STAGE_MODES = OUTPUT_STAGES.filter((s) => s.key !== "clean");
-function cleanFx() {
+var f = e.filter((e) => e.key !== "clean");
+function p() {
 	return {
-		bypass: false,
+		bypass: !1,
 		inDb: 0,
 		outDb: 0,
 		outputStage: {
-			enabled: false,
+			enabled: !1,
 			mode: "cassette",
 			mixPct: 100,
 			intensityPct: 50
 		},
 		drive: {
-			enabled: false,
+			enabled: !1,
 			type: "tape",
 			amountPct: 30
 		},
 		crunch: {
-			enabled: false,
+			enabled: !1,
 			bits: 12,
 			rateDivide: 2
 		},
 		tone: {
-			enabled: false,
+			enabled: !1,
 			hz: 8e3
 		}
 	};
 }
-/** True when the processor leaves audio exactly as it is. */
-function isClean(s) {
-	return s.bypass || !s.outputStage.enabled && !s.drive.enabled && !s.crunch.enabled && !s.tone.enabled && s.inDb === 0 && s.outDb === 0;
+function m(e) {
+	return e.bypass || !e.outputStage.enabled && !e.drive.enabled && !e.crunch.enabled && !e.tone.enabled && e.inDb === 0 && e.outDb === 0;
 }
-var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var num = (v, lo, hi, def, int = false) => {
-	let x = typeof v === "number" && Number.isFinite(v) ? v : def;
-	if (int) x = Math.round(x);
-	return Math.max(lo, Math.min(hi, x));
-};
-var bool = (v, def) => typeof v === "boolean" ? v : def;
-/** Validate stored settings, filling anything missing or out of range from the CLEAN defaults. */
-function repairFx(src) {
-	const d = cleanFx();
-	const o = isObj(src) ? src : {};
-	const os = isObj(o.outputStage) ? o.outputStage : {};
-	const dr = isObj(o.drive) ? o.drive : {};
-	const cr = isObj(o.crunch) ? o.crunch : {};
-	const to = isObj(o.tone) ? o.tone : {};
-	const modes = OUTPUT_STAGE_MODES.map((m) => m.key);
-	const drives = DRIVE_TYPES.map((m) => m.key);
+var h = (e) => !!e && typeof e == "object" && !Array.isArray(e), g = (e, t, n, r, i = !1) => {
+	let a = typeof e == "number" && Number.isFinite(e) ? e : r;
+	return i && (a = Math.round(a)), Math.max(t, Math.min(n, a));
+}, _ = (e, t) => typeof e == "boolean" ? e : t;
+function v(e) {
+	let n = p(), r = h(e) ? e : {}, i = h(r.outputStage) ? r.outputStage : {}, a = h(r.drive) ? r.drive : {}, o = h(r.crunch) ? r.crunch : {}, s = h(r.tone) ? r.tone : {}, c = f.map((e) => e.key), l = t.map((e) => e.key);
 	return {
-		bypass: bool(o.bypass, d.bypass),
-		inDb: num(o.inDb, -24, 24, d.inDb),
-		outDb: num(o.outDb, -24, 24, d.outDb),
+		bypass: _(r.bypass, n.bypass),
+		inDb: g(r.inDb, -24, 24, n.inDb),
+		outDb: g(r.outDb, -24, 24, n.outDb),
 		outputStage: {
-			enabled: bool(os.enabled, false),
-			mode: typeof os.mode === "string" && modes.includes(os.mode) ? os.mode : d.outputStage.mode,
-			mixPct: num(os.mixPct, 0, 100, d.outputStage.mixPct),
-			intensityPct: num(os.intensityPct, 0, 100, d.outputStage.intensityPct)
+			enabled: _(i.enabled, !1),
+			mode: typeof i.mode == "string" && c.includes(i.mode) ? i.mode : n.outputStage.mode,
+			mixPct: g(i.mixPct, 0, 100, n.outputStage.mixPct),
+			intensityPct: g(i.intensityPct, 0, 100, n.outputStage.intensityPct)
 		},
 		drive: {
-			enabled: bool(dr.enabled, false),
-			type: typeof dr.type === "string" && drives.includes(dr.type) ? dr.type : d.drive.type,
-			amountPct: num(dr.amountPct, 0, 100, d.drive.amountPct)
+			enabled: _(a.enabled, !1),
+			type: typeof a.type == "string" && l.includes(a.type) ? a.type : n.drive.type,
+			amountPct: g(a.amountPct, 0, 100, n.drive.amountPct)
 		},
 		crunch: {
-			enabled: bool(cr.enabled, false),
-			bits: num(cr.bits, 1, 16, d.crunch.bits, true),
-			rateDivide: num(cr.rateDivide, 1, 32, d.crunch.rateDivide, true)
+			enabled: _(o.enabled, !1),
+			bits: g(o.bits, 1, 16, n.crunch.bits, !0),
+			rateDivide: g(o.rateDivide, 1, 32, n.crunch.rateDivide, !0)
 		},
 		tone: {
-			enabled: bool(to.enabled, false),
-			hz: num(to.hz, 200, 2e4, d.tone.hz)
+			enabled: _(s.enabled, !1),
+			hz: g(s.hz, 200, 2e4, n.tone.hz)
 		}
 	};
 }
 //#endregion
 //#region src/dsp/output/stream.ts
-/**
-* Streaming output processor: Good Bits' lo-fi chain run sample by sample, so the same code
-* serves an AudioWorklet (live and OfflineAudioContext) and plain buffers.
-*
-* Every stage calls the vendored Good Bits code (`MODE_FACTORIES`, `driveShapeFor`,
-* `makeOnePoleLP`) or repeats its arithmetic exactly (crunch, mix/intensity), rounding to
-* 32-bit float between stages as Good Bits' whole-buffer functions do when they write each
-* stage into a Float32Array. The result is bit-identical to `applyLofiChain` for the same
-* input, settings and seed, whatever the block size (see test/dsp-output.test.ts).
-*/
-var f32 = Math.fround;
-var clamp01 = (x) => Math.max(0, Math.min(1, x));
-var dbToGain = (db) => db === 0 ? 1 : Math.pow(10, db / 20);
-/** Build the chain for one set of settings. Its state (filters, noise, hold counter) starts fresh. */
-function createChain(s, sampleRate, seed) {
-	if (isClean(s)) return () => {};
-	const inG = dbToGain(s.inDb);
-	const outG = dbToGain(s.outDb);
-	const mix = clamp01((s.outputStage.mixPct ?? 100) / 100);
-	const factory = MODE_FACTORIES[s.outputStage.mode];
-	const stage = s.outputStage.enabled && mix > 1e-4 && s.outputStage.mode !== "clean" && factory ? factory(sampleRate, makeRng(seed)) : null;
-	const intensity = clamp01((s.outputStage.intensityPct ?? 50) / 100);
-	const d = s.drive.enabled ? clamp01((s.drive.amountPct ?? 0) / 100) : 0;
-	const useDrive = d > 1e-4;
-	const g = 1 + d * 5;
-	const shape = driveShapeFor(s.drive.type);
-	const bits = Math.max(1, Math.min(16, Math.round(s.crunch.bits ?? 16)));
-	const rate = Math.max(1, Math.min(32, Math.round(s.crunch.rateDivide ?? 1)));
-	const hasBits = s.crunch.enabled && bits < 16;
-	const hasRate = s.crunch.enabled && rate > 1;
-	const useCrunch = hasBits || hasRate;
-	const step = 2 / Math.pow(2, bits);
-	let index = 0;
-	let heldL = 0;
-	let heldR = 0;
-	const useTone = s.tone.enabled && s.tone.hz < 2e4;
-	const lpL = makeOnePoleLP(sampleRate, s.tone.hz);
-	const lpR = makeOnePoleLP(sampleRate, s.tone.hz);
-	return (L, R, n) => {
-		for (let k = 0; k < n; k++) {
-			let l = inG === 1 ? L[k] : f32(L[k] * inG);
-			let r = inG === 1 ? R[k] : f32(R[k] * inG);
-			if (stage) {
-				const [rawL, rawR] = stage(l, r);
-				const wetL = l + (rawL - l) * intensity;
-				const wetR = r + (rawR - r) * intensity;
-				l = f32(l + (wetL - l) * mix);
-				r = f32(r + (wetR - r) * mix);
+var y = Math.fround, b = (e) => Math.max(0, Math.min(1, e)), x = (e) => e === 0 ? 1 : 10 ** (e / 20);
+function S(e, t, r) {
+	if (m(e)) return () => {};
+	let i = x(e.inDb), a = x(e.outDb), o = b((e.outputStage.mixPct ?? 100) / 100), s = u[e.outputStage.mode], c = e.outputStage.enabled && o > 1e-4 && e.outputStage.mode !== "clean" && s ? s(t, l(r)) : null, f = b((e.outputStage.intensityPct ?? 50) / 100), p = e.drive.enabled ? b((e.drive.amountPct ?? 0) / 100) : 0, h = p > 1e-4, g = 1 + p * 5, _ = d(e.drive.type), v = Math.max(1, Math.min(16, Math.round(e.crunch.bits ?? 16))), S = Math.max(1, Math.min(32, Math.round(e.crunch.rateDivide ?? 1))), C = e.crunch.enabled && v < 16, w = e.crunch.enabled && S > 1, T = C || w, E = 2 / 2 ** v, D = 0, O = 0, k = 0, A = e.tone.enabled && e.tone.hz < 2e4, j = n(t, e.tone.hz), M = n(t, e.tone.hz);
+	return (e, t, n) => {
+		for (let r = 0; r < n; r++) {
+			let n = i === 1 ? e[r] : y(e[r] * i), s = i === 1 ? t[r] : y(t[r] * i);
+			if (c) {
+				let [e, t] = c(n, s), r = n + (e - n) * f, i = s + (t - s) * f;
+				n = y(n + (r - n) * o), s = y(s + (i - s) * o);
 			}
-			if (useDrive) {
-				l = f32((1 - d) * l + d * shape(l, g, d));
-				r = f32((1 - d) * r + d * shape(r, g, d));
-			}
-			if (useCrunch) {
-				if (!hasRate || index % rate === 0) {
-					heldL = l;
-					heldR = r;
-				}
-				index++;
-				l = hasBits ? f32(Math.round(heldL / step) * step) : heldL;
-				r = hasBits ? f32(Math.round(heldR / step) * step) : heldR;
-			}
-			if (useTone) {
-				l = f32(lpL(l));
-				r = f32(lpR(r));
-			}
-			L[k] = outG === 1 ? l : l * outG;
-			R[k] = outG === 1 ? r : r * outG;
+			h && (n = y((1 - p) * n + p * _(n, g, p)), s = y((1 - p) * s + p * _(s, g, p))), T && ((!w || D % S === 0) && (O = n, k = s), D++, n = C ? y(Math.round(O / E) * E) : O, s = C ? y(Math.round(k / E) * E) : k), A && (n = y(j(n)), s = y(M(s))), e[r] = a === 1 ? n : n * a, t[r] = a === 1 ? s : s * a;
 		}
 	};
 }
-/**
-* A processor whose settings can change while it runs. A change starts a new chain and
-* crossfades from the old one over SETTINGS_FADE samples, so switching never clicks.
-*/
-var OutputFxStream = class {
+var C = class {
 	settings;
 	sampleRate;
 	seed;
@@ -653,99 +362,47 @@ var OutputFxStream = class {
 	fadeLeft = 0;
 	scratchL = /* @__PURE__ */ new Float32Array(128);
 	scratchR = /* @__PURE__ */ new Float32Array(128);
-	constructor(settings, sampleRate, seed) {
-		this.settings = settings;
-		this.sampleRate = sampleRate;
-		this.seed = seed;
-		this.chain = createChain(settings, sampleRate, seed);
+	constructor(e, t, n) {
+		this.settings = e, this.sampleRate = t, this.seed = n, this.chain = S(e, t, n);
 	}
 	get current() {
 		return this.settings;
 	}
-	set(settings) {
-		if (JSON.stringify(settings) === JSON.stringify(this.settings)) return;
-		this.old = this.chain;
-		this.fadeLeft = 256;
-		this.settings = settings;
-		this.chain = createChain(settings, this.sampleRate, this.seed);
+	set(e) {
+		JSON.stringify(e) !== JSON.stringify(this.settings) && (this.old = this.chain, this.fadeLeft = 256, this.settings = e, this.chain = S(e, this.sampleRate, this.seed));
 	}
-	/** Start the current settings' state afresh (noise, filters, hold phase), with no crossfade. */
 	reset() {
-		this.old = null;
-		this.fadeLeft = 0;
-		this.chain = createChain(this.settings, this.sampleRate, this.seed);
+		this.old = null, this.fadeLeft = 0, this.chain = S(this.settings, this.sampleRate, this.seed);
 	}
-	process(L, R, n = L.length) {
+	process(e, t, n = e.length) {
 		if (!this.old || this.fadeLeft <= 0) {
-			this.chain(L, R, n);
+			this.chain(e, t, n);
 			return;
 		}
-		if (this.scratchL.length < n) {
-			this.scratchL = new Float32Array(n);
-			this.scratchR = new Float32Array(n);
+		this.scratchL.length < n && (this.scratchL = new Float32Array(n), this.scratchR = new Float32Array(n));
+		let r = this.scratchL, i = this.scratchR;
+		r.set(e.subarray(0, n)), i.set(t.subarray(0, n)), this.old(r, i, n), this.chain(e, t, n);
+		for (let a = 0; a < n && !(this.fadeLeft <= 0); a++) {
+			let n = 1 - this.fadeLeft / 256;
+			e[a] = r[a] + (e[a] - r[a]) * n, t[a] = i[a] + (t[a] - i[a]) * n, this.fadeLeft--;
 		}
-		const oL = this.scratchL;
-		const oR = this.scratchR;
-		oL.set(L.subarray(0, n));
-		oR.set(R.subarray(0, n));
-		this.old(oL, oR, n);
-		this.chain(L, R, n);
-		for (let k = 0; k < n; k++) {
-			if (this.fadeLeft <= 0) break;
-			const t = 1 - this.fadeLeft / 256;
-			L[k] = oL[k] + (L[k] - oL[k]) * t;
-			R[k] = oR[k] + (R[k] - oR[k]) * t;
-			this.fadeLeft--;
-		}
-		if (this.fadeLeft <= 0) this.old = null;
+		this.fadeLeft <= 0 && (this.old = null);
 	}
-};
-//#endregion
-//#region src/dsp/output/constants.ts
-/** The AudioWorklet processor name registered by worklet.ts. */
-var OUTPUT_FX_PROCESSOR = "slopfactory-output-fx";
-//#endregion
-//#region src/dsp/output/worklet.ts
-/**
-* AudioWorklet processor for output processing. It only moves blocks in and out of the shared
-* OutputFxStream, so live playback (AudioContext) and offline rendering (OfflineAudioContext)
-* run exactly the same DSP code.
-*
-* Messages: { type: 'settings', settings } changes settings (crossfaded);
-*           { type: 'reset', at } restarts processor state at context time `at` (seconds).
-*/
-var OutputFxProcessor = class extends AudioWorkletProcessor {
+}, w = "slopfactory-output-fx", T = class extends AudioWorkletProcessor {
 	stream;
 	resetAt = null;
-	constructor(options) {
-		super(options);
-		const po = options.processorOptions ?? {};
-		this.stream = new OutputFxStream(repairFx(po.settings), sampleRate, (po.seed ?? 1) >>> 0);
-		this.port.onmessage = (e) => {
-			const m = e.data;
-			if (m.type === "settings") this.stream.set(repairFx(m.settings));
-			else if (m.type === "reset") this.resetAt = typeof m.at === "number" ? m.at : 0;
+	constructor(e) {
+		super(e);
+		let t = e.processorOptions ?? {};
+		this.stream = new C(v(t.settings), sampleRate, (t.seed ?? 1) >>> 0), this.port.onmessage = (e) => {
+			let t = e.data;
+			t.type === "settings" ? this.stream.set(v(t.settings)) : t.type === "reset" && (this.resetAt = typeof t.at == "number" ? t.at : 0);
 		};
 	}
-	process(inputs, outputs) {
-		const out = outputs[0];
-		const L = out[0];
-		const R = out[1] ?? out[0];
-		const inp = inputs[0] ?? [];
-		if (inp.length > 0) {
-			L.set(inp[0]);
-			R.set(inp[1] ?? inp[0]);
-		} else {
-			L.fill(0);
-			R.fill(0);
-		}
-		if (this.resetAt !== null && currentTime >= this.resetAt) {
-			this.stream.reset();
-			this.resetAt = null;
-		}
-		this.stream.process(L, R, L.length);
-		return true;
+	process(e, t) {
+		let n = t[0], r = n[0], i = n[1] ?? n[0], a = e[0] ?? [];
+		return a.length > 0 ? (r.set(a[0]), i.set(a[1] ?? a[0])) : (r.fill(0), i.fill(0)), this.resetAt !== null && currentTime >= this.resetAt && (this.stream.reset(), this.resetAt = null), this.stream.process(r, i, r.length), !0;
 	}
 };
-registerProcessor(OUTPUT_FX_PROCESSOR, OutputFxProcessor);
+registerProcessor(w, T);
 //#endregion

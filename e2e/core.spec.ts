@@ -218,3 +218,53 @@ test('WAV and ZIP: encoded files decode back exactly; clipping is reported, not 
   expect(r.same).toBe(true);
   expect(r.err).toBeLessThan(1 / 32767 + 1e-6);
 });
+
+test('GATED notes hold their level until the note-off, then release (fade scheduled ahead)', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (tone) => {
+    const { core, workletUrl } = window as any;
+    const bytes = Uint8Array.from(atob(tone), (c) => c.charCodeAt(0)).buffer;
+    const buf = core.toAudioBuffer(await core.decodeSample(bytes, 'tone.wav'));
+    const inst = new core.SampleInstrument(buf, { ...core.defaultZone(), root: 48, mode: 'gated', release: 0.1 });
+    // a 1 s note (120 BPM, 96 PPQ: 192 ticks)
+    const timeline = { tempo: core.constantTempo(120, 96), length: 384, voices: [{ id: 'v', name: 'V' }], events: [{ type: 'note', tick: 0, duration: 192, voice: 'v', pitch: 48, velocity: 127 }] };
+    const res = await core.renderTimeline({ timeline, tailSeconds: 0, master: true, stems: [], resolve: () => inst, fxModuleUrl: workletUrl });
+    const x = res.outputs[0].channels[0];
+    const win = (a: number) => {
+      let s = 0;
+      for (let i = a; i < a + 2205; i++) s += x[i] * x[i];
+      return Math.sqrt(s / 2205);
+    };
+    return { early: win(4410), late: win(44100 - 2205 - 10), mid: win(44100 + 2205 - 1102), after: win(44100 + 4410 + 100) };
+  }, b64(melodicWav()));
+  // steady tone: level at 0.95 s equals level at 0.1 s; half-way through the 0.1 s release about half
+  expect(Math.abs(r.late / r.early - 1)).toBeLessThan(0.02);
+  expect(r.mid / r.early).toBeGreaterThan(0.35);
+  expect(r.mid / r.early).toBeLessThan(0.65);
+  expect(r.after).toBe(0);
+});
+
+test('masterInsert adds the application\'s own master stage to the master only', async ({ page }) => {
+  await open(page);
+  const r = await page.evaluate(async (kick) => {
+    const { core, workletUrl } = window as any;
+    const bytes = Uint8Array.from(atob(kick), (c) => c.charCodeAt(0)).buffer;
+    const inst = new core.SampleInstrument(core.toAudioBuffer(await core.decodeSample(bytes, 'kick.wav')), { ...core.defaultZone(), mode: 'oneshot' });
+    const timeline = { tempo: core.constantTempo(120, 96), length: 96, voices: [{ id: 'v', name: 'V' }], events: [{ type: 'note', tick: 0, duration: 10, voice: 'v', pitch: 60, velocity: 127 }] };
+    const res = await core.renderTimeline({
+      timeline, tailSeconds: 0, master: true, stems: [{ voice: 'v', processed: true }], resolve: () => inst, fxModuleUrl: workletUrl,
+      masterInsert: (ctx: BaseAudioContext, input: AudioNode) => {
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        input.connect(g);
+        return g;
+      },
+    });
+    const [m, s] = res.outputs.map((o: any) => o.channels[0]);
+    let err = 0;
+    for (let i = 0; i < m.length; i++) err = Math.max(err, Math.abs(m[i] - 0.5 * s[i]));
+    return { err, peak: Math.max(...s) };
+  }, b64(kickWav()));
+  expect(r.peak).toBeGreaterThan(0.1);
+  expect(r.err).toBeLessThan(1e-6);
+});

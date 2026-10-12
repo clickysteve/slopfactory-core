@@ -160,23 +160,30 @@ var Mixer = class {
 };
 //#endregion
 //#region src/audio/player.ts
+var DEFAULT_CHOKE_FADE = .005;
 var NotePlayer = class {
 	ctx;
 	mixer;
 	resolve;
 	held = /* @__PURE__ */ new Map();
 	sounding = /* @__PURE__ */ new Map();
+	/** notes that can be cut, per choke group */
+	chokable = /* @__PURE__ */ new Map();
+	chokeOf;
 	maxPerVoice;
 	constructor(ctx, mixer, resolve, opts = {}) {
 		this.ctx = ctx;
 		this.mixer = mixer;
 		this.resolve = resolve;
 		this.maxPerVoice = opts.maxPerVoice ?? 32;
+		this.chokeOf = opts.choke;
 	}
 	noteOn(key, voice, note) {
 		this.noteOff(key, note.time);
 		const inst = this.resolve(voice, note);
 		if (!inst) return false;
+		const choke = this.chokeOf?.(voice, note) ?? null;
+		if (choke) this.cut(choke, note.time);
 		const list = (this.sounding.get(voice) ?? []).filter((a) => a.handle.end > note.time);
 		while (list.length >= this.maxPerVoice) list.shift().handle.stop(note.time);
 		const handle = inst.start(this.ctx, this.mixer.input(voice), note);
@@ -184,13 +191,43 @@ var NotePlayer = class {
 			this.sounding.set(voice, list);
 			return false;
 		}
-		list.push({
+		const active = {
 			handle,
 			start: note.time
-		});
+		};
+		list.push(active);
 		this.sounding.set(voice, list);
 		this.held.set(key, handle);
+		if (choke && choke.cutBy !== false && choke.group) {
+			const group = (this.chokable.get(choke.group) ?? []).filter((a) => a.handle.end > note.time);
+			group.push(active);
+			this.chokable.set(choke.group, group);
+		}
 		return true;
+	}
+	/**
+	* Apply a note's choke without playing it. Offline rendering uses this for notes of voices
+	* that are not part of the current render pass, so a stem rendered on its own is cut
+	* exactly as it is in the full mix.
+	*/
+	chokeOnly(voice, note) {
+		if (!this.chokeOf || !this.resolve(voice, note)) return;
+		const choke = this.chokeOf(voice, note);
+		if (choke) this.cut(choke, note.time);
+	}
+	/** Cut the sounding notes of the group that started before `time`. Notes starting at the same time are kept. */
+	cut(choke, time) {
+		if (choke.cuts === false || !choke.group) return;
+		const list = this.chokable.get(choke.group);
+		if (!list) return;
+		const fade = choke.fade ?? .005;
+		const keep = [];
+		for (const a of list) {
+			if (a.handle.end <= time) continue;
+			if (a.start < time) a.handle.stop(time, fade);
+			else keep.push(a);
+		}
+		this.chokable.set(choke.group, keep);
 	}
 	noteOff(key, time) {
 		const h = this.held.get(key);
@@ -208,6 +245,7 @@ var NotePlayer = class {
 		for (const list of this.sounding.values()) for (const a of list) a.handle.stop(time);
 		this.sounding.clear();
 		this.held.clear();
+		this.chokable.clear();
 	}
 	/** Notes still sounding at `time`, per voice. */
 	activeCount(voice, time) {
@@ -215,4 +253,4 @@ var NotePlayer = class {
 	}
 };
 //#endregion
-export { stripSeed as i, Mixer as n, defaultStrip as r, NotePlayer as t };
+export { stripSeed as a, defaultStrip as i, NotePlayer as n, Mixer as r, DEFAULT_CHOKE_FADE as t };

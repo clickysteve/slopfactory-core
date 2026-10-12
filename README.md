@@ -18,7 +18,7 @@ Users today: **ANVIL** (<https://github.com/clickysteve/anvil>) and **DOWNBEAT**
 | Module | Import | Provides |
 |---|---|---|
 | events | `@slopfactory/core/events` | The musical event model: integer ticks at any PPQ, tempo maps, notes with voice and instrument keys, validation, a MIDI-style note pairer. |
-| audio | `@slopfactory/core/audio` | The `Instrument` interface, the `Mixer` (voice processing, gain, pan, mute/solo, master), the `NotePlayer` (retrigger rules, polyphony limits). |
+| audio | `@slopfactory/core/audio` | The `Instrument` interface, the `Mixer` (voice processing, gain, pan, mute/solo, master), the `NotePlayer` (retrigger rules, polyphony limits, choke groups). |
 | sampler | `@slopfactory/core/sampler` | Sample zones (tuning, volume, pan, ONE SHOT / GATED / LOOP, start/end, loop points), the polyphonic `SampleInstrument`, decoding, zero-crossing snapping, waveform peaks. |
 | dsp | `@slopfactory/core/dsp` | **Output processing** (Good Bits output stage, drive, crunch, gain, tone) streamed live and offline; **sample transformations** (Good Bits STRETCH FX) with a cache and a Worker runner. |
 | render | `@slopfactory/core/render` | Offline rendering of a timeline to a master and sample-aligned stems through the same graph as live playback. |
@@ -33,13 +33,13 @@ Everything is also exported from `@slopfactory/core`.
 Applications depend on an immutable version tag of this repository (no npm registry):
 
 ```bash
-npm install "git+https://github.com/clickysteve/slopfactory-core.git#v0.1.0"
+npm install "git+https://github.com/clickysteve/slopfactory-core.git#v0.2.0"
 ```
 
 which records in `package.json`
 
 ```json
-"dependencies": { "@slopfactory/core": "git+https://github.com/clickysteve/slopfactory-core.git#v0.1.0" }
+"dependencies": { "@slopfactory/core": "git+https://github.com/clickysteve/slopfactory-core.git#v0.2.0" }
 ```
 
 and pins the tag's commit SHA in `package-lock.json`. The tagged commit contains the built
@@ -107,7 +107,7 @@ npm run check:dist  # rebuild and fail if dist/ differs from what is committed
 
 ## Documentation
 
-* [Architecture](docs/ARCHITECTURE.md): the event model, routing, processing, rendering, stems, storage, determinism.
+* [Architecture](docs/ARCHITECTURE.md): the event model, routing, processing, rendering, stems, storage, choke groups, determinism.
 * [API](docs/API.md): every module's public interface.
 * [Releasing](docs/RELEASING.md): versions, tags, how applications upgrade.
 * [Good Bits DSP](docs/GOOD-BITS-DSP.md): what is reused from The Good Bits and how its provenance is checked.
