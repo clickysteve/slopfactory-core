@@ -11,10 +11,11 @@ DOWNBEAT), an application master insert for offline renders, and fixed fades sch
 | Module | Source | Depends on |
 |---|---|---|
 | events | `src/events/` | nothing |
-| audio | `src/audio/` | dsp (output nodes) |
+| audio | `src/audio/` | dsp (output nodes), engines (master chain node) |
 | sampler | `src/sampler/` | audio, dsp/vendor |
 | dsp | `src/dsp/` (`output/`, `transform/`, `vendor/goodbits/`) | nothing outside dsp |
-| render | `src/render/` | events, audio, dsp |
+| engines | `src/engines/` | dsp (kernels, Good Bits metadata) |
+| render | `src/render/` | events, audio, dsp, engines |
 | export | `src/export/` | dsp/vendor (WAV encoder) |
 | storage | `src/storage/` | export (ZIP) |
 | midi | `src/midi/` | nothing (types only) |
@@ -76,7 +77,7 @@ new NotePlayer(ctx, mixer, resolve, { maxPerVoice })   // noteOn(key, voice, not
 ```
 
 Signal flow: instrument, per-voice processing, voice gain and pan, mute/solo gate, master bus,
-master processing, master gain, output. The same objects run in an `AudioContext` and in an
+master processing, master output chain (when the application gives one), master gain, output. The same objects run in an `AudioContext` and in an
 `OfflineAudioContext`.
 
 ### Sample processing vs output processing
@@ -90,6 +91,16 @@ master processing, master gain, output. The same objects run in an `AudioContext
 | Changes duration | can | never |
 
 Destructive, whole-buffer algorithms (time-stretch) are never forced into the real-time graph.
+
+### Output engines
+
+Version 0.4.0 splits output processing into independent **engines** (Good Bits OUTPUT STAGE,
+DRIVE, CRUNCH, and TONE) behind a plugin contract, with registries an application owns, a
+serial **output chain** whose configuration is plain JSON, a headless controller for
+interfaces, and a note-safe MIDI engine chain. The chain runs one implementation everywhere:
+an AudioWorklet live, the same worklet offline, and `renderChain` over buffers. The combined
+`OutputFxSettings` processor stays (per voice and master) and is built from the same kernels.
+See `docs/OUTPUT-ENGINES.md`.
 
 ### Rendering and export
 

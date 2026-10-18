@@ -24,5 +24,8 @@
   },
   "modified": {
     "js/outputstage.js": "one export statement appended after the upstream content; upstream bytes unchanged"
+  },
+  "canonical": {
+    "js/outputstage.js": "Since Core 0.4.0 Core is the canonical home of the output stages; The Good Bits imports them from Core (docs/GOOD-BITS-DSP.md section 10). The hash records the last upstream bytes."
   }
 }

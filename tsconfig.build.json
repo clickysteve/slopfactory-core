@@ -9,5 +9,5 @@
     "types": []
   },
   "include": ["src"],
-  "exclude": ["src/examples", "src/dsp/output/worklet.ts", "src/dsp/transform/worker.ts"]
+  "exclude": ["src/examples", "src/dsp/output/worklet.ts", "src/engines/worklet.ts", "src/dsp/transform/worker.ts"]
 }

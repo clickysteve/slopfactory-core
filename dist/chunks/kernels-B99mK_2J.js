@@ -1,7 +1,3 @@
-//#region src/dsp/output/constants.ts
-/** The AudioWorklet processor name registered by worklet.ts. */
-var OUTPUT_FX_PROCESSOR = "slopfactory-output-fx";
-//#endregion
 //#region src/dsp/vendor/goodbits/js/outputstage.js
 /** Output stage character presets - order matches the UI select. "clean" is the off/bypass state. */
 var OUTPUT_STAGES = [
@@ -84,7 +80,7 @@ var DRIVE_TYPES = [
 		description: "extreme, broken-speaker fuzz"
 	}
 ];
-function clamp01(x) {
+function clamp01$1(x) {
 	return Math.max(0, Math.min(1, x));
 }
 function makeOnePoleLP(fs, fc) {
@@ -492,7 +488,7 @@ function driveShapeFor(key) {
 }
 /** amountPct 0-100. 0 is a no-op copy. */
 function applyDrive(channels, driveKey, amountPct = 0) {
-	const d = clamp01((amountPct ?? 0) / 100);
+	const d = clamp01$1((amountPct ?? 0) / 100);
 	if (d <= 1e-4) return channels.map((ch) => Float32Array.from(ch));
 	const g = 1 + d * 5;
 	const shape = driveShapeFor(driveKey);
@@ -706,7 +702,7 @@ function fxLabel(s) {
 	return parts.length ? parts.join("+") : s.inDb || s.outDb ? "GAIN" : "CLEAN";
 }
 var isObj = (v) => !!v && typeof v === "object" && !Array.isArray(v);
-var num = (v, lo, hi, def, int = false) => {
+var num$1 = (v, lo, hi, def, int = false) => {
 	let x = typeof v === "number" && Number.isFinite(v) ? v : def;
 	if (int) x = Math.round(x);
 	return Math.max(lo, Math.min(hi, x));
@@ -724,123 +720,225 @@ function repairFx(src) {
 	const drives = DRIVE_TYPES.map((m) => m.key);
 	return {
 		bypass: bool(o.bypass, d.bypass),
-		inDb: num(o.inDb, -24, 24, d.inDb),
-		outDb: num(o.outDb, -24, 24, d.outDb),
+		inDb: num$1(o.inDb, -24, 24, d.inDb),
+		outDb: num$1(o.outDb, -24, 24, d.outDb),
 		outputStage: {
 			enabled: bool(os.enabled, false),
 			mode: typeof os.mode === "string" && modes.includes(os.mode) ? os.mode : d.outputStage.mode,
-			mixPct: num(os.mixPct, 0, 100, d.outputStage.mixPct),
-			intensityPct: num(os.intensityPct, 0, 100, d.outputStage.intensityPct)
+			mixPct: num$1(os.mixPct, 0, 100, d.outputStage.mixPct),
+			intensityPct: num$1(os.intensityPct, 0, 100, d.outputStage.intensityPct)
 		},
 		drive: {
 			enabled: bool(dr.enabled, false),
 			type: typeof dr.type === "string" && drives.includes(dr.type) ? dr.type : d.drive.type,
-			amountPct: num(dr.amountPct, 0, 100, d.drive.amountPct)
+			amountPct: num$1(dr.amountPct, 0, 100, d.drive.amountPct)
 		},
 		crunch: {
 			enabled: bool(cr.enabled, false),
-			bits: num(cr.bits, 1, 16, d.crunch.bits, true),
-			rateDivide: num(cr.rateDivide, 1, 32, d.crunch.rateDivide, true)
+			bits: num$1(cr.bits, 1, 16, d.crunch.bits, true),
+			rateDivide: num$1(cr.rateDivide, 1, 32, d.crunch.rateDivide, true)
 		},
 		tone: {
 			enabled: bool(to.enabled, false),
-			hz: num(to.hz, 200, 2e4, d.tone.hz)
+			hz: num$1(to.hz, 200, 2e4, d.tone.hz)
 		}
 	};
 }
 //#endregion
-//#region src/dsp/output/node.ts
+//#region src/dsp/output/kernels.ts
 /**
-* Output-processor nodes for any BaseAudioContext (live or offline).
+* Block kernels for the Good Bits lo-fi stages: one stage each, processing a stereo block in
+* place. These are the only implementation of the stages in Core: the combined output
+* processor (`createChain` in stream.ts) and the output-engine plugins (`../../engines`) are
+* both built from them, live (AudioWorklet), offline (OfflineAudioContext) and over plain
+* buffers.
 *
-* `loadOutputFx(ctx, moduleUrl)` registers the worklet once per context. The module URL comes
-* from the application's bundler (for Vite: `import url from '.../worklet.ts?worker&url'`), so
-* Core itself makes no assumption about how it is served.
+* Every kernel calls the vendored Good Bits code (`MODE_FACTORIES`, `driveShapeFor`,
+* `makeOnePoleLP`) or repeats its arithmetic exactly (crunch, mix/intensity), and rounds to
+* 32-bit float on output as Good Bits' whole-buffer functions do when they write a stage into a
+* Float32Array. With steady parameters the output is bit-identical to `applyOutputStage`,
+* `applyDrive` and `applyCrunch` on the same input and seed, whatever the block size.
 *
-* Without AudioWorklet (an insecure context or an old browser) `createOutputFxNode` returns a
-* plain stereo pass-through and reports `processing: false`, so audio still plays, unprocessed.
+* `update()` changes parameters in place where that can be done smoothly (a short linear ramp
+* on mix, intensity and drive amount) and returns false where it cannot (a different mode,
+* shape, bit depth, rate or cutoff), in which case the caller builds a new kernel and
+* crossfades to it.
 */
-var loaded = /* @__PURE__ */ new WeakMap();
-function loadOutputFx(ctx, moduleUrl) {
-	let p = loaded.get(ctx);
-	if (!p) {
-		p = (async () => {
-			try {
-				if (!ctx.audioWorklet) return false;
-				await ctx.audioWorklet.addModule(moduleUrl);
-				return true;
-			} catch {
-				return false;
-			}
-		})();
-		loaded.set(ctx, p);
+var f32 = Math.fround;
+var clamp01 = (x) => Math.max(0, Math.min(1, x));
+var num = (v, def) => typeof v === "number" && Number.isFinite(v) ? v : def;
+/** Length of an in-place parameter ramp, in samples (20 ms). */
+var rampFrames = (sampleRate) => Math.max(1, Math.round(sampleRate * .02));
+/** A value that moves linearly to its target over a number of samples and then holds it exactly. */
+var Ramp = class {
+	value;
+	step = 0;
+	left = 0;
+	goal = 0;
+	constructor(value) {
+		this.value = value;
 	}
-	return p;
-}
-async function outputFxAvailable(ctx) {
-	return await loaded.get(ctx) ?? false;
-}
-/**
-* `available` must be the resolved result of loadOutputFx for this context. `resetAt` (context
-* seconds) restarts the processor's state at that time; given here it is part of the node's
-* construction, so it cannot arrive late the way a `reset()` message can in a fast offline
-* render.
-*/
-function createOutputFxNode(ctx, settings, seed, available, resetAt) {
-	if (available && typeof AudioWorkletNode !== "undefined") {
-		const node = new AudioWorkletNode(ctx, OUTPUT_FX_PROCESSOR, {
-			numberOfInputs: 1,
-			numberOfOutputs: 1,
-			outputChannelCount: [2],
-			channelCount: 2,
-			channelCountMode: "explicit",
-			channelInterpretation: "speakers",
-			processorOptions: {
-				settings,
-				seed,
-				...resetAt !== void 0 ? { resetAt } : {}
-			}
-		});
-		const h = {
-			node,
-			processing: true,
-			settings,
-			set(s) {
-				h.settings = s;
-				node.port.postMessage({
-					type: "settings",
-					settings: s
-				});
-			},
-			reset(at) {
-				node.port.postMessage({
-					type: "reset",
-					at
-				});
-			},
-			dispose() {
-				node.disconnect();
-				node.port.close();
-			}
-		};
-		return h;
+	get target() {
+		return this.left > 0 ? this.goal : this.value;
 	}
-	const g = ctx.createGain();
-	g.channelCount = 2;
-	g.channelCountMode = "explicit";
-	g.channelInterpretation = "speakers";
+	get steady() {
+		return this.left === 0;
+	}
+	to(target, frames) {
+		if (this.left === 0 && target === this.value) return;
+		this.goal = target;
+		this.left = Math.max(1, frames);
+		this.step = (target - this.value) / this.left;
+	}
+	next() {
+		if (this.left > 0) {
+			this.left--;
+			this.value = this.left === 0 ? this.goal : this.value + this.step;
+		}
+		return this.value;
+	}
+};
+/** Good Bits output stage (applyOutputStage): a character mode, intensity, then mix. */
+function outputStageKernel(sampleRate, p, seed) {
+	const factory = p.mode !== "clean" ? MODE_FACTORIES[p.mode] : void 0;
+	if (!factory) return {
+		process() {},
+		update: (q) => q.mode === p.mode
+	};
+	const stage = factory(sampleRate, makeRng(seed >>> 0));
+	const mixOf = (pct) => {
+		const m = clamp01(num(pct, 100) / 100);
+		return m <= 1e-4 ? 0 : m;
+	};
+	const mix = new Ramp(mixOf(p.mixPct));
+	const intensity = new Ramp(clamp01(num(p.intensityPct, 50) / 100));
+	const frames = rampFrames(sampleRate);
 	return {
-		node: g,
-		processing: false,
-		settings,
-		set(s) {
-			this.settings = s;
+		process(L, R, n) {
+			if (mix.steady && intensity.steady) {
+				const m = mix.value;
+				const t = intensity.value;
+				if (m === 0) return;
+				for (let k = 0; k < n; k++) {
+					const l = L[k];
+					const r = R[k];
+					const [rawL, rawR] = stage(l, r);
+					const wetL = l + (rawL - l) * t;
+					const wetR = r + (rawR - r) * t;
+					L[k] = f32(l + (wetL - l) * m);
+					R[k] = f32(r + (wetR - r) * m);
+				}
+				return;
+			}
+			for (let k = 0; k < n; k++) {
+				const m = mix.next();
+				const t = intensity.next();
+				const l = L[k];
+				const r = R[k];
+				const [rawL, rawR] = stage(l, r);
+				const wetL = l + (rawL - l) * t;
+				const wetR = r + (rawR - r) * t;
+				L[k] = f32(l + (wetL - l) * m);
+				R[k] = f32(r + (wetR - r) * m);
+			}
 		},
-		reset() {},
-		dispose() {
-			g.disconnect();
+		update(q) {
+			if (q.mode !== p.mode) return false;
+			mix.to(mixOf(q.mixPct), frames);
+			intensity.to(clamp01(num(q.intensityPct, 50) / 100), frames);
+			return true;
 		}
 	};
 }
+/** Good Bits drive (applyDrive): out = (1 - d) x + d shape(x, 1 + 5d, d). */
+function driveKernel(sampleRate, p) {
+	const shape = driveShapeFor(p.type);
+	const amount = new Ramp(clamp01(num(p.amountPct, 0) / 100));
+	const frames = rampFrames(sampleRate);
+	return {
+		process(L, R, n) {
+			if (amount.steady) {
+				const d = amount.value;
+				if (d <= 1e-4) return;
+				const g = 1 + d * 5;
+				for (let k = 0; k < n; k++) {
+					L[k] = f32((1 - d) * L[k] + d * shape(L[k], g, d));
+					R[k] = f32((1 - d) * R[k] + d * shape(R[k], g, d));
+				}
+				return;
+			}
+			for (let k = 0; k < n; k++) {
+				const d = amount.next();
+				const g = 1 + d * 5;
+				L[k] = f32((1 - d) * L[k] + d * shape(L[k], g, d));
+				R[k] = f32((1 - d) * R[k] + d * shape(R[k], g, d));
+			}
+		},
+		update(q) {
+			if (q.type !== p.type) return false;
+			amount.to(clamp01(num(q.amountPct, 0) / 100), frames);
+			return true;
+		}
+	};
+}
+/** Good Bits crunch (applyCrunch): every n-th sample held n samples, then quantised. */
+function crunchKernel(p) {
+	const bits = Math.max(1, Math.min(16, Math.round(num(p.bits, 16))));
+	const rate = Math.max(1, Math.min(32, Math.round(num(p.rateDivide, 1))));
+	const hasBits = bits < 16;
+	const hasRate = rate > 1;
+	const same = (q) => q.bits === p.bits && q.rateDivide === p.rateDivide;
+	if (!hasBits && !hasRate) return {
+		process() {},
+		update: same
+	};
+	const step = 2 / Math.pow(2, bits);
+	let index = 0;
+	let heldL = 0;
+	let heldR = 0;
+	return {
+		process(L, R, n) {
+			for (let k = 0; k < n; k++) {
+				if (!hasRate || index % rate === 0) {
+					heldL = L[k];
+					heldR = R[k];
+				}
+				index++;
+				L[k] = hasBits ? f32(Math.round(heldL / step) * step) : heldL;
+				R[k] = hasBits ? f32(Math.round(heldR / step) * step) : heldR;
+			}
+		},
+		update: same
+	};
+}
+/** Tone: Good Bits' one-pole low-pass (makeOnePoleLP) per channel. 20 kHz and above = off. */
+function toneKernel(sampleRate, p) {
+	const same = (q) => q.hz === p.hz;
+	if (!(p.hz < 2e4)) return {
+		process() {},
+		update: same
+	};
+	const lpL = makeOnePoleLP(sampleRate, p.hz);
+	const lpR = makeOnePoleLP(sampleRate, p.hz);
+	return {
+		process(L, R, n) {
+			for (let k = 0; k < n; k++) {
+				L[k] = f32(lpL(L[k]));
+				R[k] = f32(lpR(R[k]));
+			}
+		},
+		update: same
+	};
+}
+/** A fixed gain (the combined processor's IN and OUT dB). */
+function gainKernel(gain) {
+	return { process(L, R, n) {
+		if (gain === 1) return;
+		for (let k = 0; k < n; k++) {
+			L[k] = L[k] * gain;
+			R[k] = R[k] * gain;
+		}
+	} };
+}
 //#endregion
-export { makeRng as _, FX_PRESETS as a, fxLabel as c, repairFx as d, MODE_FACTORIES as f, makeOnePoleLP as g, driveShapeFor as h, DRIVE_SHAPES as i, isClean as l, applyDrive as m, loadOutputFx as n, OUTPUT_STAGE_MODES as o, applyCrunch as p, outputFxAvailable as r, cleanFx as s, createOutputFxNode as t, matchPreset as u, OUTPUT_FX_PROCESSOR as v };
+export { applyCrunch as _, outputStageKernel as a, FX_PRESETS as c, fxLabel as d, isClean as f, OUTPUT_STAGES as g, DRIVE_TYPES as h, gainKernel as i, OUTPUT_STAGE_MODES as l, repairFx as m, crunchKernel as n, toneKernel as o, matchPreset as p, driveKernel as r, DRIVE_SHAPES as s, Ramp as t, cleanFx as u, applyDrive as v };

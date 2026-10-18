@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.4.0
+
+* **Output engines** (`@slopfactory/core/engines`, `docs/OUTPUT-ENGINES.md`): The Good Bits'
+  output stages as independent plugins: `goodbits.output-stage` (10 character modes),
+  `goodbits.drive`, `goodbits.crunch`, plus `core.tone`. Each is bit-identical to its Good Bits
+  function with steady parameters.
+  * Plugin contract with separate audio (`AudioEngineDef`, block kernels) and MIDI
+    (`MidiEngineDef`) interfaces; parameter descriptions (continuous, integer, boolean, enum;
+    ranges, units, neutral values, smoothing) with validation and formatting.
+  * `EngineRegistry` (owned by each application, no global state) and `coreEngines(ids?)` for
+    per-application availability.
+  * Serial output chain: plain-JSON `ChainConfig` (unknown engines kept and passed through),
+    `repairChain`, presets (Core's processing presets as chains), the headless `OutputChain`
+    controller with change notifications, `ChainStream`/`renderChain` (offline) and
+    `createChainNode` + `chain-worklet.js` (live and OfflineAudioContext) running the same
+    code. Parameter ramps and crossfades make changes, bypass and reordering click-free.
+  * `MidiEngineChain`: MIDI engines in series with note-off routing owned by the chain, so no
+    note can stick on bypass, removal, reconfiguration, panic or stop. No MIDI engine is built
+    in (The Good Bits has none).
+  * `engines.standalone.js`: the engines module as one self-contained file for applications
+    without a bundler.
+* `MixerOptions.masterChain` / `chainAvailable`, `Mixer.setMasterChain()`: a master output chain
+  after master processing and before master gain. Built only when given, so existing mixers
+  are unchanged.
+* `RenderRequest.masterChain` / `chainModuleUrl`, `RenderResult.chainProcessed`: the same chain
+  in offline renders, master output only (never stems).
+* The combined output processor (`createChain`, `OutputFxStream`) is now built from the same
+  shared stage kernels as the engines. Its output is unchanged (the bit-identity tests against
+  Good Bits still pass).
+
 ## 0.3.0
 
 * **Palettes** (`@slopfactory/core/palette`): the colour-palette system of the first Slop

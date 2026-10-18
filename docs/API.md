@@ -9,9 +9,11 @@ from `src/`, which is the reference for every comment and default).
 | Export | What it is | How to load it |
 |---|---|---|
 | `@slopfactory/core/output-fx-worklet.js` | The output-processing AudioWorklet, self-contained | Pass its URL to `loadOutputFx(ctx, url)` or `renderTimeline({ fxModuleUrl })`. With Vite: `import url from '@slopfactory/core/output-fx-worklet.js?url'`. |
+| `@slopfactory/core/chain-worklet.js` | The output-chain AudioWorklet (built-in engines), self-contained | Pass its URL to `loadOutputChain(ctx, url)` or `renderTimeline({ chainModuleUrl })`. With Vite: `?url` as above. |
+| `@slopfactory/core/engines.standalone.js` | The engines module as one self-contained ES module | For applications with no bundler: copy it (pinned) and import it by relative path. |
 | `@slopfactory/core/transform-worker.js` | The sample-transformation Worker, self-contained | `new WorkerTransformRunner(() => new Worker(url, { type: 'module' }))`. With Vite: `?url` as above. |
 
-Both are plain ES files with no imports, so any bundler that can emit a file and give its URL
+The worklets and the Worker are plain ES files with no imports, so any bundler that can emit a file and give its URL
 works.
 
 ## `@slopfactory/core` (root)
@@ -43,8 +45,8 @@ Everything below, plus `CORE_VERSION` (the package version string).
 | `interface NoteHandle { release(time); stop(time, fade?); readonly end }` | `release` = note-off (one-shots ignore it); `stop` = quick fade (stealing, panic, chokes) |
 | `fadeOut(param, time, seconds, level)` | linear fade to zero starting at `time` from `level` (a number, or a `GainEnvelope` that is updated) |
 | `class GainEnvelope`: `set(t, v)`, `ramp(t, v)`, `cancel(t)`, `at(t)` | a record of a gain's scheduled automation, so fades scheduled ahead start from the true level |
-| `class Mixer(ctx, MixerOptions)` | voice strips and master; `input(voice)`, `processedTap(voice)`, `dryTap(voice)`, `setStrip`, `setMasterFx`, `setMasterGain`, `resetFx(at)`, `processing`, `output`, `dispose()` |
-| `interface MixerOptions { voices; strips?; masterFx?; masterGain?; fxAvailable; seed?; dryTaps? }` | |
+| `class Mixer(ctx, MixerOptions)` | voice strips and master; `input(voice)`, `processedTap(voice)`, `dryTap(voice)`, `setStrip`, `setMasterFx`, `setMasterChain`, `masterChain`, `setMasterGain`, `resetFx(at)`, `processing`, `output`, `dispose()` |
+| `interface MixerOptions { voices; strips?; masterFx?; masterGain?; fxAvailable; seed?; dryTaps?; resetAt?; masterChain?; chainAvailable? }` | |
 | `interface StripSettings { gain; pan; mute; solo; fx }`, `defaultStrip()`, `stripSeed(seed, index)` | |
 | `class NotePlayer(ctx, mixer, resolve, { maxPerVoice?, choke? })` | `noteOn(key, voice, note)`, `noteOff(key, time)`, `chokeOnly(voice, note)`, `releaseAll(time)`, `stopAll(time)`, `activeCount(voice, time)` |
 | `interface NoteStart extends NoteRequest { instrument? }`, `type ResolveInstrument = (voice, note) => Instrument \| null` | |
@@ -84,14 +86,32 @@ Everything below, plus `CORE_VERSION` (the package version string).
 | `class TransformCache(runner?, maxEntries?)`: `get(sampleId, audio, t)`, `has`, `drop` | one computation per (sample, settings) |
 | `syncRunner`, `class WorkerTransformRunner(createWorker)`, `interface TransformRunner` | |
 
+## engines
+
+See `docs/OUTPUT-ENGINES.md` for the design and the guide to adding an engine.
+
+| Export | Summary |
+|---|---|
+| `interface AudioEngineDef { kind: 'audio'; id; name; version; description; origin?; category?; inputs; outputs; realtime; offline; latency; seeded?; params; presets?; createKernel(sampleRate, params, seed) }` | an audio engine: metadata plus a block kernel `{ process(L, R, n); update?(params) }` |
+| `interface MidiEngineDef { kind: 'midi'; ...; createProcessor(params) }`, `MidiProcessor`, `MidiMessage` | a MIDI engine (not an AudioNode) |
+| `type ParamDef = ContinuousParam \| IntegerParam \| BooleanParam \| EnumParam`, `defaultParams`, `repairParam(s)`, `isValidParam`, `formatParam` | parameter descriptions: range, step, unit, neutral (OFF) value, control scale (linear/log), smoothing, options |
+| `BUILTIN_AUDIO_ENGINES`, `OUTPUT_STAGE_ENGINE`, `DRIVE_ENGINE`, `CRUNCH_ENGINE`, `TONE_ENGINE`, `GOOD_BITS_ENGINE_IDS` | the built-in engines |
+| `class EngineRegistry(defs?)`: `register`, `unregister`, `has`, `get`, `audio`, `midi`, `list({ kind? })`, `only(ids)`; `coreEngines(ids?)`, `checkEngine(def)` | an application's own registry (no global state) |
+| `interface ChainConfig { version; bypass; stages: StageConfig[] }`, `StageConfig { id; engine; enabled; params; v? }`, `emptyChain()`, `repairChain(json, engines?)`, `repairChainWith`, `chainActive`, `unavailableStages`, `stageSeeds`, `MAX_STAGES`, `CHAIN_VERSION` | plain-JSON configuration |
+| `CHAIN_PRESETS`, `presetsFor(engines)`, `matchChainPreset(config)`, `chainFromFx(OutputFxSettings)` | presets |
+| `class OutputChain(registry, config?, maxStages?)`: `config`, `stages`, `available()`, `engine(stage)`, `canAdd`, `add`, `remove`, `move`, `moveTo`, `replace`, `setEnabled`, `setParam(s)`, `resetParams`, `applyEnginePreset`, `setBypass`, `applyPreset`, `load`, `clear`, `subscribe` | headless controller |
+| `class ChainStream(engines, config, sampleRate, seed)`: `set`, `reset`, `process(L, R, n)`; `renderChain(channels, sampleRate, config, seed, { engines?, blockSize? })`, `CHAIN_FADE` | the chain DSP (the worklet runs exactly this) |
+| `loadOutputChain(ctx, url)`, `createChainNode(ctx, config, { available, seed?, resetAt?, processor? })` → `ChainNode { node; processing; config; set; reset; dispose }`, `registerChainProcessor(engines, name?)`, `OUTPUT_CHAIN_PROCESSOR` | Web Audio (AudioContext or OfflineAudioContext) |
+| `class MidiEngineChain(engines, config, out)`: `send(msg)`, `set(config)`, `panic(time)`, `stop(time)`, `sounding` | note-safe MIDI engine chain |
+
 ## render
 
 | Export | Summary |
 |---|---|
 | `renderTimeline(RenderRequest)` → `Promise<RenderResult>` | master and/or stems, aligned, one shared tail |
-| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; choke?; masterInsert?; masterLatencyFrames?; preRollSeconds?; fxModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
+| `interface RenderRequest { timeline; sampleRate?; tailSeconds; master; stems: StemRequest[]; strips?; masterFx?; masterGain?; fxSeed?; resolve; choke?; masterInsert?; masterLatencyFrames?; preRollSeconds?; fxModuleUrl?; masterChain?; chainModuleUrl?; maxPerVoice?; onControl?; onProgress?; signal?; memoryBudget?; chunkSeconds? }` | |
 | `interface StemRequest { voice; processed }` | |
-| `interface RenderResult { sampleRate; frames; seconds; musicSeconds; outputs: RenderOutput[]; renders; processed }` | |
+| `interface RenderResult { sampleRate; frames; seconds; musicSeconds; outputs: RenderOutput[]; renders; processed; chainProcessed }` | |
 | `renderLength(timeline, tail, rate)`, `planRenders(...)`, `EXPORT_SAMPLE_RATE` (44100), `MAX_RENDER_SECONDS` (20 min), `class RenderCancelled` | |
 
 ## export

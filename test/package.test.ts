@@ -10,7 +10,7 @@ import { CORE_VERSION } from '../src/version';
 
 const ROOT = resolve(__dirname, '..');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { name: string; version: string; exports: Record<string, string | { types: string; import: string }>; dependencies?: object };
-const MODULES = ['events', 'audio', 'sampler', 'dsp', 'render', 'export', 'storage', 'midi', 'palette'];
+const MODULES = ['events', 'audio', 'sampler', 'dsp', 'engines', 'render', 'export', 'storage', 'midi', 'palette'];
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 
 describe('package', () => {
@@ -25,7 +25,7 @@ describe('package', () => {
   });
 
   it('exports the root and one subpath per module, each with JS and declarations that exist', () => {
-    expect(Object.keys(pkg.exports)).toEqual(expect.arrayContaining(['.', ...MODULES.map((m) => `./${m}`), './output-fx-worklet.js', './transform-worker.js']));
+    expect(Object.keys(pkg.exports)).toEqual(expect.arrayContaining(['.', ...MODULES.map((m) => `./${m}`), './output-fx-worklet.js', './chain-worklet.js', './engines.standalone.js', './transform-worker.js']));
     for (const [k, v] of Object.entries(pkg.exports)) {
       const targets = typeof v === 'string' ? [v] : [v.types, v.import];
       for (const t of targets) expect(existsSync(join(ROOT, t)), `${k} -> ${t}`).toBe(true);
@@ -48,11 +48,21 @@ describe('package', () => {
   });
 
   it('the AudioWorklet and Worker files are self-contained (loadable by URL)', () => {
-    for (const f of ['dist/output-fx-worklet.js', 'dist/transform-worker.js']) {
+    for (const f of ['dist/output-fx-worklet.js', 'dist/chain-worklet.js', 'dist/transform-worker.js']) {
       const text = readFileSync(join(ROOT, f), 'utf8');
       expect(text, f).not.toMatch(/^\s*(import|export)\b/m);
     }
     expect(readFileSync(join(ROOT, 'dist/output-fx-worklet.js'), 'utf8')).toContain('registerProcessor(');
+    expect(readFileSync(join(ROOT, 'dist/chain-worklet.js'), 'utf8')).toContain('registerProcessor(');
+  });
+
+  it('the standalone engines file imports nothing and exports the same as the engines module', async () => {
+    const text = readFileSync(join(ROOT, 'dist/engines.standalone.js'), 'utf8');
+    expect(text).not.toMatch(/^\s*import\b/m);
+    expect(text).not.toMatch(/\bimport\(/);
+    const standalone = await import(join(ROOT, 'dist/engines.standalone.js'));
+    const mod = await import(join(ROOT, 'dist/engines.js'));
+    expect(Object.keys(standalone).sort()).toEqual(Object.keys(mod).sort());
   });
 
   it('dist names no application in its code', () => {

@@ -7,6 +7,7 @@ import { constantTempo, sortEvents, type NoteEvent } from '@slopfactory/core/eve
 import { Mixer, NotePlayer, type Instrument, type NoteHandle } from '@slopfactory/core/audio';
 import { defaultZone, SampleInstrument, type SampleZone } from '@slopfactory/core/sampler';
 import { cleanFx, FX_PRESETS, identityTransform, type OutputFxSettings, type SampleTransform } from '@slopfactory/core/dsp';
+import { coreEngines, OutputChain, renderChain, type AudioEngineDef, type ChainConfig, type ParamDef } from '@slopfactory/core/engines';
 import { EXPORT_SAMPLE_RATE } from '@slopfactory/core/render';
 import { createZip, encodeWav16 } from '@slopfactory/core/export';
 import { IndexedDbSampleStore, writeBundle, type SampleStore } from '@slopfactory/core/storage';
@@ -21,5 +22,8 @@ const timeline: Timeline = { tempo: constantTempo(120, 24), length: 96, voices: 
 const silent: Instrument = { start: (): NoteHandle | null => null };
 const request: RenderRequest = { timeline, tailSeconds: 1, master: true, stems: [], resolve: () => silent };
 const store: SampleStore = new IndexedDbSampleStore('x');
-type Unused = [typeof Mixer, typeof NotePlayer, typeof SampleInstrument, typeof renderTimeline, typeof createZip, typeof encodeWav16, typeof writeBundle, ClockSource, MidiOutputPort];
-export const consumer = { version, zone, fx, t, request, store, rate: EXPORT_SAMPLE_RATE } as { version: string } & Record<string, unknown> & { unused?: Unused };
+const chain: ChainConfig = new OutputChain(coreEngines()).config;
+const firstParam: ParamDef | undefined = (coreEngines().list()[0] as AudioEngineDef).params[0];
+const withChain: RenderRequest = { ...request, masterChain: chain, chainModuleUrl: 'chain-worklet.js' };
+type Unused = [typeof Mixer, typeof NotePlayer, typeof SampleInstrument, typeof renderTimeline, typeof createZip, typeof encodeWav16, typeof writeBundle, typeof renderChain, ClockSource, MidiOutputPort];
+export const consumer = { version, zone, fx, t, request, store, chain, firstParam, withChain, rate: EXPORT_SAMPLE_RATE } as { version: string } & Record<string, unknown> & { unused?: Unused };
