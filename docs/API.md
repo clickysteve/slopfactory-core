@@ -119,3 +119,20 @@ Everything below, plus `CORE_VERSION` (the package version string).
 Types only: `MidiPortInfo`, `MidiOutputPort`, `MidiInputPort`, `ClockSource`,
 `ClockFollower`, `LearnableParameter`, `ParameterRegistry`, `LearnMapping`. No implementation
 (see `docs/MIDI-ROADMAP.md`).
+
+## palette
+
+Colour palettes: a cosmetic layer over CSS custom properties. An application declares its roles;
+everything else is shared, so palettes behave, persist and exchange alike in every application.
+
+| Export | Summary |
+|---|---|
+| `interface PaletteRole { id; label; help; css; contrast?; from?; area? }` | one colour role = one CSS custom property; `from`: the role it follows when a palette leaves it out; `area`: redefines `--ink` and the 1-bit fills inside `[data-area="<id>"]` |
+| `interface PaletteConfig { app; roles; builtIns; accept?; extraCss? }` | `app` names the storage keys (`<app>.palette.*`) and the file format (`<app>-palette`); the first built-in is the default; `accept`: other applications' formats to import |
+| `SHARED_ROLES` | `desktop`, `paper`, `ink`, `dim`, `activity`, `selection` |
+| `SHARED_PRESETS`, `ATARI`, `DARK`, `AMBER`, `GREEN_SCREEN`, `C64`, `PHOSPHOR`, `PINK_NOISE`, `RAVE`, `PAPER` | built-in palettes in the shared roles (`ATARI`, id `classic`, is the original black and white) |
+| `paletteCss(config, colors)`, `applyPalette(config, colors, doc?)`, `isDefaultPalette(config, colors)`, `completeColors(config, partial)`, `SWAP_INK_PAPER` | the style sheet (one `<style id="<app>-palette">`); other than the default palette, marks use `--mark-color` / `--mark-blend` |
+| `normHex(v)`, `luminance(hex)`, `contrast(a, b)`, `contrastWarnings(config, colors)` | WCAG contrast; warnings never change a colour |
+| `exportPalette(config, p)`, `importPalette(config, text)` → `ImportResult { name; colors; filled; ignored }`, `class PaletteError`, `PALETTE_VERSION`, `paletteFormat(config)` | palette files: `{ format, version, name, colors }` |
+| `class PaletteLibrary(config, store?)`: `all()`, `find`, `selected`, `select`, `duplicate`, `setColor`, `rename`, `remove`, `addImported`, `resetToDefault()`, `builtIns`, `custom` | preferences; built-ins are never edited (editing makes a copy) |
+| `paletteEditor(host, lib, { apply?, save?, open?, onChange? })` → `{ refresh(); reset(); width; height }`, `PALETTE_EDITOR_WIDTH` | the palette editor, mounted into an element the application provides (drawn with the shared class names `label`, `box`, `mtext`, `mbutton`, `inv`) |

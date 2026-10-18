@@ -18,6 +18,7 @@ DOWNBEAT), an application master insert for offline renders, and fixed fades sch
 | export | `src/export/` | dsp/vendor (WAV encoder) |
 | storage | `src/storage/` | export (ZIP) |
 | midi | `src/midi/` | nothing (types only) |
+| palette | `src/palette/` | nothing (DOM only when the editor or `applyPalette` is called) |
 
 ### Rules that keep Core reusable
 

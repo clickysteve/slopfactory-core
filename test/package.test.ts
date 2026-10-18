@@ -10,7 +10,7 @@ import { CORE_VERSION } from '../src/version';
 
 const ROOT = resolve(__dirname, '..');
 const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')) as { name: string; version: string; exports: Record<string, string | { types: string; import: string }>; dependencies?: object };
-const MODULES = ['events', 'audio', 'sampler', 'dsp', 'render', 'export', 'storage', 'midi'];
+const MODULES = ['events', 'audio', 'sampler', 'dsp', 'render', 'export', 'storage', 'midi', 'palette'];
 const walk = (d: string): string[] => readdirSync(d).flatMap((f) => (statSync(join(d, f)).isDirectory() ? walk(join(d, f)) : [join(d, f)]));
 
 describe('package', () => {

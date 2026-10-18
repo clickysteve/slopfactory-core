@@ -1,6 +1,6 @@
 # Slop Factory Core
 
-Shared audio, sampling, DSP, rendering, WAV/ZIP export and storage for the Slop Factory family
+Shared audio, sampling, DSP, rendering, WAV/ZIP export, storage and colour palettes for the Slop Factory family
 of browser music applications. Infrastructure, not an application: the applications provide
 the musical ideas; Core provides the plumbing.
 
@@ -9,8 +9,9 @@ browser (Web Audio, AudioWorklet, OfflineAudioContext, Web Workers, IndexedDB, W
 needs no server, makes no network requests and has no runtime dependencies. Each application
 bundles it into its own static build.
 
-Users today: **ANVIL** (<https://github.com/clickysteve/anvil>) and **DOWNBEAT**
-(<https://github.com/clickysteve/downbeat>). This is not the Slop Factory catalogue site
+Users today: **ANVIL** (<https://github.com/clickysteve/anvil>), **DOWNBEAT**
+(<https://github.com/clickysteve/downbeat>) and **The Breakery**
+(<https://github.com/clickysteve/the-breakery>), which also uses the palettes. This is not the Slop Factory catalogue site
 (<https://github.com/clickysteve/slopfactory>).
 
 ## What is in it
@@ -25,6 +26,7 @@ Users today: **ANVIL** (<https://github.com/clickysteve/anvil>) and **DOWNBEAT**
 | export | `@slopfactory/core/export` | 16-bit WAV encoding, level statistics, WAV header reading, a stored-ZIP writer and reader, file names. |
 | storage | `@slopfactory/core/storage` | Content-addressed sample storage (SHA-256) in IndexedDB or memory; portable project bundles. |
 | midi | `@slopfactory/core/midi` | **Interfaces only.** No shared MIDI implementation yet (see `docs/MIDI-ROADMAP.md`). |
+| palette | `@slopfactory/core/palette` | Colour palettes for the 1-bit interfaces: colour roles (shared, plus each application's own), the style sheet, contrast checks, palette files (importable across applications), preferences, the shared presets (Atari, Dark, Amber, Green Screen, C64, Phosphor, Pink Noise, Rave, Paper) and the palette editor. Cosmetic only. |
 
 Everything is also exported from `@slopfactory/core`.
 

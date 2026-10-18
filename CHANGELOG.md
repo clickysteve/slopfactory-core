@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+* **Palettes** (`@slopfactory/core/palette`): the colour-palette system of the first Slop
+  Factory application, made generic and shared: colour roles (the shared six plus each
+  application's own, which follow a shared role unless a palette colours them), the style sheet
+  with 1-bit fills redrawn in the palette's colours, contrast warnings, palette files that
+  import across applications by the roles they share, preferences in `<app>.palette.*` (the same
+  keys and shape as before, so an application moving to Core keeps its users' palettes), and the
+  palette editor. Shared presets: Atari (the original black and white, id `classic`), Dark,
+  Amber, Green Screen, C64, Phosphor, Pink Noise, Rave and Paper. New module only: nothing else
+  changes.
+
 ## 0.2.0
 
 * **Choke groups** (`NotePlayer` option `choke`, `RenderRequest.choke`): a note can belong to a

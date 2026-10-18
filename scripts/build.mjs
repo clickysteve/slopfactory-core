@@ -10,7 +10,7 @@ import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
-const MODULES = ['events', 'audio', 'sampler', 'dsp', 'render', 'export', 'storage', 'midi'];
+const MODULES = ['events', 'audio', 'sampler', 'dsp', 'render', 'export', 'storage', 'midi', 'palette'];
 
 rmSync(dist, { recursive: true, force: true });
 
