@@ -39,7 +39,7 @@ data.
 | `goodbits.output-stage` | Output stage | `mode`: Cassette, Reel-to-Reel, Damaged, Vinyl, Boombox, AM Radio, VHS Hi-Fi, Bus Comp, Lathe, Phone Bus (cassette); `mixPct` 0-100 % (100); `intensityPct` 0-100 % (50) | yes | yes | yes |
 | `goodbits.drive` | Drive | `type`: Tape, Tube, Diode, Fuzz (tape); `amountPct` 0-100 % (40) | no | yes | yes |
 | `goodbits.crunch` | Crunch | `bits` 1-16 (8; 16 = off); `rateDivide` 1-32 (1 = off) | no | yes | yes |
-| `core.tone` | Tone | `hz` 200-20000 Hz (8000; 20000 = off) | no | yes | yes |
+| `core.tone` | Tone | `hz` 200-20000 Hz (8000; 20000 = off; log scale) | no | yes | yes |
 
 Parameter ids are Good Bits' own settings fields, and defaults are Good Bits' interface
 defaults, so a stored value means the same thing in every application.
@@ -48,6 +48,17 @@ With steady parameters, each engine's output is **bit-identical** to the Good Bi
 on the same input and seed, at any block size; a chain of output stage, drive and crunch is
 bit-identical to `applyLofiChain` (`test/engines.test.ts`). In Chromium, the chain worklet in
 an `OfflineAudioContext` matches `renderChain` to within 1e-6 (`e2e/engines.spec.ts`).
+
+### Where the applications use them
+
+| Application | Engines offered | Where the chain sits | Live | Export |
+|---|---|---|---|---|
+| The Good Bits | its original three (`GOOD_BITS_ENGINE_IDS`), in its fixed order | each exported region (CHOP: output stage only) | no live path | `renderChain` in its export worker (pinned `engines.standalone.js`) |
+| The Breakery | all four | master: after the track mixer, before MASTER LEVEL (OUTPUT tab) | chain worklet | TAKEAWAY master (`renderTimeline`), never stems |
+| DOWNBEAT | all four | master: after master processing, before VOLUME and its compressor (AUDIO ▸ OUTPUT CHAIN) | chain worklet | EXPORT AUDIO master, never stems |
+| emmm | all four | the internal monitor sound only (Options ▸ Monitor Output…); MIDI is never processed | chain worklet | none (emmm exports MIDI only) |
+
+No application routes MIDI through an engine chain: no MIDI engine exists yet.
 
 ## 3. How it fits together
 
@@ -127,7 +138,8 @@ await renderTimeline({ ...request, masterChain: chain.config, chainModuleUrl: ch
 for (const stage of chain.stages) {
   const def = chain.engine(stage);           // undefined: unavailable here
   for (const p of def?.params ?? []) {
-    // p.type: 'continuous' | 'integer' (min, max, step, unit, neutral) | 'boolean' | 'enum' (options)
+    // p.type: 'continuous' (min, max, step, unit, neutral, scale: 'log' for frequencies, smooth)
+    //       | 'integer' (min, max, unit, neutral) | 'boolean' | 'enum' (options with descriptions)
     // formatParam(p, stage.params[p.id]) gives "40%", "8 bit", "OFF", "Cassette"
   }
 }

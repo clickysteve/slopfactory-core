@@ -35,6 +35,7 @@ function checkParam(p: ParamDef): string[] {
   const errs: string[] = [];
   if ((p.type === 'continuous' || p.type === 'integer') && !(p.min < p.max)) errs.push(`parameter "${p.id}": min must be below max`);
   if (p.type === 'enum' && !p.options.length) errs.push(`parameter "${p.id}": no options`);
+  if (p.type === 'continuous' && p.scale === 'log' && !(p.min > 0)) errs.push(`parameter "${p.id}": a log scale needs min > 0`);
   if (repairParam(p, p.default) !== p.default) errs.push(`parameter "${p.id}": default out of range`);
   return errs;
 }

@@ -74,7 +74,7 @@ export const TONE_ENGINE: AudioEngineDef = {
   description: 'A gentle one-pole low-pass (6 dB per octave).',
   origin: 'Slop Factory Core (The Good Bits one-pole low-pass)',
   category: 'filter',
-  params: [{ id: 'hz', type: 'continuous', label: 'Cutoff', min: 200, max: 20000, step: 100, default: 8000, unit: 'Hz', neutral: 20000 }],
+  params: [{ id: 'hz', type: 'continuous', label: 'Cutoff', min: 200, max: 20000, step: 100, default: 8000, unit: 'Hz', neutral: 20000, scale: 'log' }],
   createKernel: (sr, p) => toneKernel(sr, { hz: Number(p.hz) }),
 };
 

@@ -513,7 +513,8 @@ var x = {
 		step: 100,
 		default: 8e3,
 		unit: "Hz",
-		neutral: 2e4
+		neutral: 2e4,
+		scale: "log"
 	}],
 	createKernel: (e, t) => b(e, { hz: Number(t.hz) })
 }, D = Object.freeze([
@@ -771,7 +772,7 @@ function W(e) {
 }
 function G(e) {
 	let t = [];
-	return (e.type === "continuous" || e.type === "integer") && !(e.min < e.max) && t.push(`parameter "${e.id}": min must be below max`), e.type === "enum" && !e.options.length && t.push(`parameter "${e.id}": no options`), j(e, e.default) !== e.default && t.push(`parameter "${e.id}": default out of range`), t;
+	return (e.type === "continuous" || e.type === "integer") && !(e.min < e.max) && t.push(`parameter "${e.id}": min must be below max`), e.type === "enum" && !e.options.length && t.push(`parameter "${e.id}": no options`), e.type === "continuous" && e.scale === "log" && !(e.min > 0) && t.push(`parameter "${e.id}": a log scale needs min > 0`), j(e, e.default) !== e.default && t.push(`parameter "${e.id}": default out of range`), t;
 }
 var K = class e {
 	defs = /* @__PURE__ */ new Map();

@@ -1,5 +1,5 @@
 import { t as Ramp } from "./kernels-B99mK_2J.js";
-import { S as BUILTIN_AUDIO_ENGINES, b as repairParam, c as chainActive, h as stageSeeds, m as repairChainWith, p as repairChain, r as OUTPUT_CHAIN_PROCESSOR, u as emptyChain } from "./node-B0-SEP0H.js";
+import { S as BUILTIN_AUDIO_ENGINES, b as repairParam, c as chainActive, h as stageSeeds, m as repairChainWith, p as repairChain, r as OUTPUT_CHAIN_PROCESSOR, u as emptyChain } from "./node-BGNdPiOc.js";
 //#region src/engines/registry.ts
 /**
 * Engine registries. A registry is an ordinary object an application creates and owns (there is
@@ -30,6 +30,7 @@ function checkParam(p) {
 	const errs = [];
 	if ((p.type === "continuous" || p.type === "integer") && !(p.min < p.max)) errs.push(`parameter "${p.id}": min must be below max`);
 	if (p.type === "enum" && !p.options.length) errs.push(`parameter "${p.id}": no options`);
+	if (p.type === "continuous" && p.scale === "log" && !(p.min > 0)) errs.push(`parameter "${p.id}": a log scale needs min > 0`);
 	if (repairParam(p, p.default) !== p.default) errs.push(`parameter "${p.id}": default out of range`);
 	return errs;
 }

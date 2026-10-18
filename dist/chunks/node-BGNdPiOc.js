@@ -154,7 +154,8 @@ var TONE_ENGINE = {
 		step: 100,
 		default: 8e3,
 		unit: "Hz",
-		neutral: 2e4
+		neutral: 2e4,
+		scale: "log"
 	}],
 	createKernel: (sr, p) => toneKernel(sr, { hz: Number(p.hz) })
 };

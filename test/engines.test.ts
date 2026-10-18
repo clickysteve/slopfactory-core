@@ -100,6 +100,7 @@ describe('engine registry', () => {
     expect(() => r.register(gain)).toThrow(/already registered/);
     expect(() => r.register({ ...gain, id: 'Bad Id' })).toThrow(/invalid id/);
     expect(() => r.register({ ...gain, id: 'test.x', params: [{ id: 'g', type: 'continuous', label: 'G', min: 0, max: 1, default: 5 }] })).toThrow(/default out of range/);
+    expect(() => r.register({ ...gain, id: 'test.y', params: [{ id: 'g', type: 'continuous', label: 'G', min: 0, max: 1, default: 0.5, scale: 'log' }] })).toThrow(/log scale/);
     expect(r.audio('test.gain')).toBe(gain);
     expect(r.midi('test.gain')).toBeUndefined();
     // a registered engine runs in the chain with no change to the chain code

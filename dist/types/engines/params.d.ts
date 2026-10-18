@@ -22,6 +22,8 @@ export interface ContinuousParam extends ParamBase {
     unit?: string;
     /** the value at which the parameter has no effect, if there is one (show it as OFF) */
     neutral?: number;
+    /** how a control should map its travel to the value: 'log' for frequencies (default 'linear') */
+    scale?: 'linear' | 'log';
     smooth?: boolean;
 }
 /** A whole number. */

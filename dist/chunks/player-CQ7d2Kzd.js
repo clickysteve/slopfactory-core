@@ -1,6 +1,6 @@
 import { t as createOutputFxNode } from "./node-CleXsb1F.js";
 import { u as cleanFx } from "./kernels-B99mK_2J.js";
-import { t as createChainNode } from "./node-B0-SEP0H.js";
+import { t as createChainNode } from "./node-BGNdPiOc.js";
 //#region src/audio/mixer.ts
 /**
 * Audio routing shared by live playback and offline rendering:

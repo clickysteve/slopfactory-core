@@ -94,7 +94,7 @@ See `docs/OUTPUT-ENGINES.md` for the design and the guide to adding an engine.
 |---|---|
 | `interface AudioEngineDef { kind: 'audio'; id; name; version; description; origin?; category?; inputs; outputs; realtime; offline; latency; seeded?; params; presets?; createKernel(sampleRate, params, seed) }` | an audio engine: metadata plus a block kernel `{ process(L, R, n); update?(params) }` |
 | `interface MidiEngineDef { kind: 'midi'; ...; createProcessor(params) }`, `MidiProcessor`, `MidiMessage` | a MIDI engine (not an AudioNode) |
-| `type ParamDef = ContinuousParam \| IntegerParam \| BooleanParam \| EnumParam`, `defaultParams`, `repairParam(s)`, `isValidParam`, `formatParam` | parameter descriptions: range, step, unit, neutral (OFF) value, smoothing, options |
+| `type ParamDef = ContinuousParam \| IntegerParam \| BooleanParam \| EnumParam`, `defaultParams`, `repairParam(s)`, `isValidParam`, `formatParam` | parameter descriptions: range, step, unit, neutral (OFF) value, control scale (linear/log), smoothing, options |
 | `BUILTIN_AUDIO_ENGINES`, `OUTPUT_STAGE_ENGINE`, `DRIVE_ENGINE`, `CRUNCH_ENGINE`, `TONE_ENGINE`, `GOOD_BITS_ENGINE_IDS` | the built-in engines |
 | `class EngineRegistry(defs?)`: `register`, `unregister`, `has`, `get`, `audio`, `midi`, `list({ kind? })`, `only(ids)`; `coreEngines(ids?)`, `checkEngine(def)` | an application's own registry (no global state) |
 | `interface ChainConfig { version; bypass; stages: StageConfig[] }`, `StageConfig { id; engine; enabled; params; v? }`, `emptyChain()`, `repairChain(json, engines?)`, `repairChainWith`, `chainActive`, `unavailableStages`, `stageSeeds`, `MAX_STAGES`, `CHAIN_VERSION` | plain-JSON configuration |
