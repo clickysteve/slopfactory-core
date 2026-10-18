@@ -1,4 +1,6 @@
-import { s as cleanFx, t as createOutputFxNode } from "./node-zW3tNMzU.js";
+import { t as createOutputFxNode } from "./node-CleXsb1F.js";
+import { u as cleanFx } from "./kernels-B99mK_2J.js";
+import { t as createChainNode } from "./node-B0-SEP0H.js";
 //#region src/audio/mixer.ts
 /**
 * Audio routing shared by live playback and offline rendering:
@@ -26,6 +28,8 @@ var Mixer = class {
 	strips = /* @__PURE__ */ new Map();
 	masterBus;
 	masterFx;
+	/** the master output chain, when MixerOptions.masterChain was given */
+	masterChain;
 	output;
 	voices;
 	constructor(ctx, opts) {
@@ -36,7 +40,13 @@ var Mixer = class {
 		this.masterFx = createOutputFxNode(ctx, opts.masterFx ?? cleanFx(), stripSeed(seed, 1e3), opts.fxAvailable, opts.resetAt);
 		this.output = ctx.createGain();
 		this.output.gain.value = opts.masterGain ?? 1;
-		this.masterBus.connect(this.masterFx.node).connect(this.output);
+		this.masterChain = opts.masterChain ? createChainNode(ctx, opts.masterChain, {
+			available: !!opts.chainAvailable,
+			seed: stripSeed(seed, 2e3),
+			resetAt: opts.resetAt
+		}) : null;
+		const afterFx = this.masterBus.connect(this.masterFx.node);
+		(this.masterChain ? afterFx.connect(this.masterChain.node) : afterFx).connect(this.output);
 		opts.voices.forEach((id, i) => {
 			const s = {
 				...defaultStrip(),
@@ -109,6 +119,11 @@ var Mixer = class {
 	setMasterFx(fx) {
 		this.masterFx.set(fx);
 	}
+	/** Change the master output chain (requires MixerOptions.masterChain). */
+	setMasterChain(config) {
+		if (!this.masterChain) throw new Error("this mixer has no master chain (MixerOptions.masterChain)");
+		this.masterChain.set(config);
+	}
 	setMasterGain(g) {
 		this.ramp(this.output.gain, g, false);
 	}
@@ -116,6 +131,7 @@ var Mixer = class {
 	resetFx(at) {
 		for (const s of this.strips.values()) s.fx.reset(at);
 		this.masterFx.reset(at);
+		this.masterChain?.reset(at);
 	}
 	/** Whether output processing actually runs (false: the browser lacks AudioWorklet). */
 	get processing() {
@@ -155,6 +171,7 @@ var Mixer = class {
 		}
 		this.masterBus.disconnect();
 		this.masterFx.dispose();
+		this.masterChain?.dispose();
 		this.output.disconnect();
 	}
 };

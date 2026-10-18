@@ -337,23 +337,120 @@ function v(e) {
 	};
 }
 //#endregion
-//#region src/dsp/output/stream.ts
-var y = Math.fround, b = (e) => Math.max(0, Math.min(1, e)), x = (e) => e === 0 ? 1 : 10 ** (e / 20);
-function S(e, t, r) {
-	if (m(e)) return () => {};
-	let i = x(e.inDb), a = x(e.outDb), o = b((e.outputStage.mixPct ?? 100) / 100), s = u[e.outputStage.mode], c = e.outputStage.enabled && o > 1e-4 && e.outputStage.mode !== "clean" && s ? s(t, l(r)) : null, f = b((e.outputStage.intensityPct ?? 50) / 100), p = e.drive.enabled ? b((e.drive.amountPct ?? 0) / 100) : 0, h = p > 1e-4, g = 1 + p * 5, _ = d(e.drive.type), v = Math.max(1, Math.min(16, Math.round(e.crunch.bits ?? 16))), S = Math.max(1, Math.min(32, Math.round(e.crunch.rateDivide ?? 1))), C = e.crunch.enabled && v < 16, w = e.crunch.enabled && S > 1, T = C || w, E = 2 / 2 ** v, D = 0, O = 0, k = 0, A = e.tone.enabled && e.tone.hz < 2e4, j = n(t, e.tone.hz), M = n(t, e.tone.hz);
-	return (e, t, n) => {
-		for (let r = 0; r < n; r++) {
-			let n = i === 1 ? e[r] : y(e[r] * i), s = i === 1 ? t[r] : y(t[r] * i);
-			if (c) {
-				let [e, t] = c(n, s), r = n + (e - n) * f, i = s + (t - s) * f;
-				n = y(n + (r - n) * o), s = y(s + (i - s) * o);
+//#region src/dsp/output/kernels.ts
+var y = Math.fround, b = (e) => Math.max(0, Math.min(1, e)), x = (e, t) => typeof e == "number" && Number.isFinite(e) ? e : t, S = (e) => Math.max(1, Math.round(e * .02)), C = class {
+	value;
+	step = 0;
+	left = 0;
+	goal = 0;
+	constructor(e) {
+		this.value = e;
+	}
+	get target() {
+		return this.left > 0 ? this.goal : this.value;
+	}
+	get steady() {
+		return this.left === 0;
+	}
+	to(e, t) {
+		(this.left !== 0 || e !== this.value) && (this.goal = e, this.left = Math.max(1, t), this.step = (e - this.value) / this.left);
+	}
+	next() {
+		return this.left > 0 && (this.left--, this.value = this.left === 0 ? this.goal : this.value + this.step), this.value;
+	}
+};
+function w(e, t, n) {
+	let r = t.mode === "clean" ? void 0 : u[t.mode];
+	if (!r) return {
+		process() {},
+		update: (e) => e.mode === t.mode
+	};
+	let i = r(e, l(n >>> 0)), a = (e) => {
+		let t = b(x(e, 100) / 100);
+		return t <= 1e-4 ? 0 : t;
+	}, o = new C(a(t.mixPct)), s = new C(b(x(t.intensityPct, 50) / 100)), c = S(e);
+	return {
+		process(e, t, n) {
+			if (o.steady && s.steady) {
+				let r = o.value, a = s.value;
+				if (r === 0) return;
+				for (let o = 0; o < n; o++) {
+					let n = e[o], s = t[o], [c, l] = i(n, s), u = n + (c - n) * a, d = s + (l - s) * a;
+					e[o] = y(n + (u - n) * r), t[o] = y(s + (d - s) * r);
+				}
+			} else for (let r = 0; r < n; r++) {
+				let n = o.next(), a = s.next(), c = e[r], l = t[r], [u, d] = i(c, l), f = c + (u - c) * a, p = l + (d - l) * a;
+				e[r] = y(c + (f - c) * n), t[r] = y(l + (p - l) * n);
 			}
-			h && (n = y((1 - p) * n + p * _(n, g, p)), s = y((1 - p) * s + p * _(s, g, p))), T && ((!w || D % S === 0) && (O = n, k = s), D++, n = C ? y(Math.round(O / E) * E) : O, s = C ? y(Math.round(k / E) * E) : k), A && (n = y(j(n)), s = y(M(s))), e[r] = a === 1 ? n : n * a, t[r] = a === 1 ? s : s * a;
+		},
+		update(e) {
+			return e.mode === t.mode && (o.to(a(e.mixPct), c), s.to(b(x(e.intensityPct, 50) / 100), c), !0);
 		}
 	};
 }
-var C = class {
+function T(e, t) {
+	let n = d(t.type), r = new C(b(x(t.amountPct, 0) / 100)), i = S(e);
+	return {
+		process(e, t, i) {
+			if (r.steady) {
+				let a = r.value;
+				if (a <= 1e-4) return;
+				let o = 1 + a * 5;
+				for (let r = 0; r < i; r++) e[r] = y((1 - a) * e[r] + a * n(e[r], o, a)), t[r] = y((1 - a) * t[r] + a * n(t[r], o, a));
+			} else for (let a = 0; a < i; a++) {
+				let i = r.next(), o = 1 + i * 5;
+				e[a] = y((1 - i) * e[a] + i * n(e[a], o, i)), t[a] = y((1 - i) * t[a] + i * n(t[a], o, i));
+			}
+		},
+		update(e) {
+			return e.type === t.type && (r.to(b(x(e.amountPct, 0) / 100), i), !0);
+		}
+	};
+}
+function E(e) {
+	let t = Math.max(1, Math.min(16, Math.round(x(e.bits, 16)))), n = Math.max(1, Math.min(32, Math.round(x(e.rateDivide, 1)))), r = t < 16, i = n > 1, a = (t) => t.bits === e.bits && t.rateDivide === e.rateDivide;
+	if (!r && !i) return {
+		process() {},
+		update: a
+	};
+	let o = 2 / 2 ** t, s = 0, c = 0, l = 0;
+	return {
+		process(e, t, a) {
+			for (let u = 0; u < a; u++) (!i || s % n === 0) && (c = e[u], l = t[u]), s++, e[u] = r ? y(Math.round(c / o) * o) : c, t[u] = r ? y(Math.round(l / o) * o) : l;
+		},
+		update: a
+	};
+}
+function D(e, t) {
+	let r = (e) => e.hz === t.hz;
+	if (!(t.hz < 2e4)) return {
+		process() {},
+		update: r
+	};
+	let i = n(e, t.hz), a = n(e, t.hz);
+	return {
+		process(e, t, n) {
+			for (let r = 0; r < n; r++) e[r] = y(i(e[r])), t[r] = y(a(t[r]));
+		},
+		update: r
+	};
+}
+function O(e) {
+	return { process(t, n, r) {
+		if (e !== 1) for (let i = 0; i < r; i++) t[i] = t[i] * e, n[i] = n[i] * e;
+	} };
+}
+//#endregion
+//#region src/dsp/output/stream.ts
+var k = (e) => e === 0 ? 1 : 10 ** (e / 20);
+function A(e, t, n) {
+	if (m(e)) return () => {};
+	let r = [O(k(e.inDb))];
+	return e.outputStage.enabled && r.push(w(t, e.outputStage, n)), e.drive.enabled && r.push(T(t, e.drive)), e.crunch.enabled && r.push(E(e.crunch)), e.tone.enabled && r.push(D(t, e.tone)), r.push(O(k(e.outDb))), (e, t, n) => {
+		for (let i of r) i.process(e, t, n);
+	};
+}
+var j = class {
 	settings;
 	sampleRate;
 	seed;
@@ -363,16 +460,16 @@ var C = class {
 	scratchL = /* @__PURE__ */ new Float32Array(128);
 	scratchR = /* @__PURE__ */ new Float32Array(128);
 	constructor(e, t, n) {
-		this.settings = e, this.sampleRate = t, this.seed = n, this.chain = S(e, t, n);
+		this.settings = e, this.sampleRate = t, this.seed = n, this.chain = A(e, t, n);
 	}
 	get current() {
 		return this.settings;
 	}
 	set(e) {
-		JSON.stringify(e) !== JSON.stringify(this.settings) && (this.old = this.chain, this.fadeLeft = 256, this.settings = e, this.chain = S(e, this.sampleRate, this.seed));
+		JSON.stringify(e) !== JSON.stringify(this.settings) && (this.old = this.chain, this.fadeLeft = 256, this.settings = e, this.chain = A(e, this.sampleRate, this.seed));
 	}
 	reset() {
-		this.old = null, this.fadeLeft = 0, this.chain = S(this.settings, this.sampleRate, this.seed);
+		this.old = null, this.fadeLeft = 0, this.chain = A(this.settings, this.sampleRate, this.seed);
 	}
 	process(e, t, n = e.length) {
 		if (!this.old || this.fadeLeft <= 0) {
@@ -388,13 +485,13 @@ var C = class {
 		}
 		this.fadeLeft <= 0 && (this.old = null);
 	}
-}, w = "slopfactory-output-fx", T = class extends AudioWorkletProcessor {
+}, M = "slopfactory-output-fx", N = class extends AudioWorkletProcessor {
 	stream;
 	resetAt = null;
 	constructor(e) {
 		super(e);
 		let t = e.processorOptions ?? {};
-		this.stream = new C(v(t.settings), sampleRate, (t.seed ?? 1) >>> 0), typeof t.resetAt == "number" && (this.resetAt = t.resetAt), this.port.onmessage = (e) => {
+		this.stream = new j(v(t.settings), sampleRate, (t.seed ?? 1) >>> 0), typeof t.resetAt == "number" && (this.resetAt = t.resetAt), this.port.onmessage = (e) => {
 			let t = e.data;
 			t.type === "settings" ? this.stream.set(v(t.settings)) : t.type === "reset" && (this.resetAt = typeof t.at == "number" ? t.at : 0);
 		};
@@ -404,5 +501,5 @@ var C = class {
 		return a.length > 0 ? (r.set(a[0]), i.set(a[1] ?? a[0])) : (r.fill(0), i.fill(0)), this.resetAt !== null && currentTime >= this.resetAt && (this.stream.reset(), this.resetAt = null), this.stream.process(r, i, r.length), !0;
 	}
 };
-registerProcessor(w, T);
+registerProcessor(M, N);
 //#endregion

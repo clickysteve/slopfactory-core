@@ -1,7 +1,7 @@
 {
   "name": "@slopfactory/core",
-  "version": "0.3.0",
-  "description": "Slop Factory Core: shared audio, sampling, DSP, rendering, WAV/ZIP export, storage and colour palettes for browser music applications.",
+  "version": "0.4.0",
+  "description": "Slop Factory Core: shared audio, sampling, DSP, output engines, rendering, WAV/ZIP export, storage and colour palettes for browser music applications.",
   "type": "module",
   "license": "MIT",
   "repository": {
@@ -39,6 +39,10 @@
       "types": "./dist/types/dsp/index.d.ts",
       "import": "./dist/dsp.js"
     },
+    "./engines": {
+      "types": "./dist/types/engines/index.d.ts",
+      "import": "./dist/engines.js"
+    },
     "./render": {
       "types": "./dist/types/render/index.d.ts",
       "import": "./dist/render.js"
@@ -60,6 +64,8 @@
       "import": "./dist/palette.js"
     },
     "./output-fx-worklet.js": "./dist/output-fx-worklet.js",
+    "./chain-worklet.js": "./dist/chain-worklet.js",
+    "./engines.standalone.js": "./dist/engines.standalone.js",
     "./transform-worker.js": "./dist/transform-worker.js",
     "./package.json": "./package.json"
   },

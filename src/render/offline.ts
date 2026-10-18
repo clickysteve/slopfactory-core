@@ -14,6 +14,8 @@
 import { NotePlayer, type ResolveChoke, type ResolveInstrument } from '../audio/player';
 import { Mixer, type StripSettings } from '../audio/mixer';
 import { loadOutputFx } from '../dsp/output/node';
+import { chainActive, type ChainConfig } from '../engines/chain';
+import { loadOutputChain } from '../engines/node';
 import type { OutputFxSettings } from '../dsp/output/settings';
 import { TimeMap, type ControlEvent, type NoteEvent, type Timeline } from '../events/timeline';
 
@@ -62,6 +64,13 @@ export interface RenderRequest {
   preRollSeconds?: number;
   /** output-processor worklet URL; without it processing is skipped (and reported) */
   fxModuleUrl?: string;
+  /**
+   * The master output chain (output engines), after master processing and before master gain,
+   * exactly as the live Mixer places it. Master output only, never stems.
+   */
+  masterChain?: ChainConfig;
+  /** chain worklet URL (`chain-worklet.js`); needed when masterChain changes audio */
+  chainModuleUrl?: string;
   maxPerVoice?: number;
   /** controller events, if the application gives them meaning */
   onControl?: (e: ControlEvent, time: number, mixer: Mixer) => void;
@@ -93,6 +102,8 @@ export interface RenderResult {
   renders: number;
   /** false when output processing could not run (no AudioWorklet or no module URL) */
   processed: boolean;
+  /** false when a master chain that changes audio was requested but could not run */
+  chainProcessed: boolean;
 }
 
 export class RenderCancelled extends Error {
@@ -133,16 +144,18 @@ export async function renderTimeline(req: RenderRequest): Promise<RenderResult> 
   const groups = planRenders(outputs, frames, req.memoryBudget ?? 384 * 1024 * 1024);
   const results: RenderOutput[] = [];
   let processed = true;
+  let chainProcessed = true;
   for (let g = 0; g < groups.length; g++) {
     const r = await renderGroup(req, groups[g], frames, sr, (f) => req.onProgress?.((g + f) / groups.length));
     processed &&= r.processed;
+    chainProcessed &&= r.chainProcessed;
     results.push(...r.outputs);
   }
   req.onProgress?.(1);
-  return { sampleRate: sr, frames, seconds: frames / sr, musicSeconds, outputs: results, renders: groups.length, processed };
+  return { sampleRate: sr, frames, seconds: frames / sr, musicSeconds, outputs: results, renders: groups.length, processed, chainProcessed };
 }
 
-async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr: number, progress: (f: number) => void): Promise<{ outputs: RenderOutput[]; processed: boolean }> {
+async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr: number, progress: (f: number) => void): Promise<{ outputs: RenderOutput[]; processed: boolean; chainProcessed: boolean }> {
   if (req.signal?.aborted) throw new RenderCancelled();
   const channels = group.length * 2;
   const needsAll = group.some((o) => o.kind === 'master');
@@ -152,6 +165,9 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   const length = pre + frames + latency;
   const ctx = req.createContext ? req.createContext(channels, length, sr) : new OfflineAudioContext({ numberOfChannels: channels, length, sampleRate: sr });
   const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
+  // the master chain only reaches the master output, so it is built only for a pass that has it
+  const chain = needsAll && req.masterChain && chainActive(req.masterChain) ? req.masterChain : undefined;
+  const chainAvailable = chain && req.chainModuleUrl ? await loadOutputChain(ctx, req.chainModuleUrl) : false;
   const needed = new Set(needsAll ? req.timeline.voices.map((v) => v.id) : group.map((o) => o.voice!));
   const mixer = new Mixer(ctx, {
     voices: req.timeline.voices.map((v) => v.id),
@@ -163,6 +179,8 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
     dryTaps: group.some((o) => o.kind === 'stem' && !o.processed),
     // after a pre-roll, processors start afresh where the music starts
     resetAt: pre ? t0 : undefined,
+    masterChain: chain,
+    chainAvailable,
   });
   const merger = ctx.createChannelMerger(channels);
   merger.channelInterpretation = 'discrete';
@@ -236,6 +254,7 @@ async function renderGroup(req: RenderRequest, group: Out[], frames: number, sr:
   if (cancelled || req.signal?.aborted) throw new RenderCancelled();
   return {
     processed: fxAvailable,
+    chainProcessed: !chain || chainAvailable,
     outputs: group.map((o, k) => {
       // the pre-roll is dropped and the master advanced by the insert's latency: every output is
       // `frames` long from the music's frame 0

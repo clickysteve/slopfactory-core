@@ -181,22 +181,25 @@ fed 128-frame blocks, is bit-identical to `applyCrunch`, `applyDrive`, `applyOut
 `applyLofiChain` on the same input and seed, and that Core's transformation call equals
 `renderFx` on the same recipe.
 
-**Keeping one copy.** Two copies (Good Bits and Core) should not diverge indefinitely. The
-plan, which needs the owner's approval because it changes Good Bits:
+**Keeping one copy.** Since Core 0.4.0, Core is the canonical home of the **output stages**
+(`js/outputstage.js`): The Good Bits 2.1 imports them from Core (a pinned copy of
+`dist/engines.standalone.js`, see `docs/OUTPUT-ENGINES.md`), and its `js/outputstage.js` is a
+thin compatibility layer over Core's engines, checked by its own upstream tests
+(`test/outputstage.test.mjs`). The hash in `vendor.json` still records the last upstream
+bytes, so the test keeps the DSP from changing by accident; a deliberate change to the output
+stages is now made here and reaches Good Bits when it updates its pinned copy.
 
-1. Upstream the one-line export addition to Good Bits' `outputstage.js` (no behaviour change).
-2. Core now has its own repository (this one). A later step can have Good Bits import these
-   modules from the Core package so its own tests run against the shared code. Good Bits has
-   not been changed.
-3. Until then, `vendor.json` pins the exact upstream commit; updating means copying the files
-   again, updating the hashes, and re-running both test suites (Core's `npm run verify` and
-   Good Bits' `node --test`).
+The other vendored files (time-stretch, STRETCH FX, `dsp.js`, `audio-codec.js`) are sample
+processing, not output engines, and still have two copies. Updating them means copying the
+files again, updating the hashes, and re-running both test suites (Core's `npm run verify`
+and Good Bits' `node --test`). Moving them the same way is a later step.
 
 ## 11. Where the DSP runs in Core
 
 | Core module | Good Bits code | Kind |
 |---|---|---|
-| `dsp/output/stream.ts` `OutputFxStream`, `processBuffers` | `MODE_FACTORIES`, `driveShapeFor`, `makeRng`, `makeOnePoleLP` and the crunch arithmetic from `outputstage.js` | **Output processing**: continuous, 128-frame blocks |
+| `dsp/output/kernels.ts` (used by `dsp/output/stream.ts` `OutputFxStream` and the `engines` module) | `MODE_FACTORIES`, `driveShapeFor`, `makeRng`, `makeOnePoleLP` and the crunch arithmetic from `outputstage.js` | **Output processing**: continuous, block by block |
+| `engines/` `ChainStream`, `renderChain`, `chain-worklet.js` | the same kernels, as the OUTPUT STAGE, DRIVE, CRUNCH and TONE engines | **Output engines**: live, offline and over buffers |
 | `dsp/output/worklet.ts` (built to `dist/output-fx-worklet.js`) | the same stream | live (AudioContext) and offline (OfflineAudioContext) |
 | `dsp/transform/transform.ts` `applyTransform` | `renderFx` (STRETCH FX) | **Sample transformation**: whole sample, in a Worker (`dist/transform-worker.js`) |
 | `export/wav.ts` `encodeWav16` | `encodeWav` | 16-bit PCM WAV |

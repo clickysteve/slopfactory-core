@@ -11,6 +11,8 @@
  */
 import { type OutputFxNode } from '../dsp/output/node';
 import { type OutputFxSettings } from '../dsp/output/settings';
+import type { ChainConfig } from '../engines/chain';
+import { type ChainNode } from '../engines/node';
 export interface StripSettings {
     gain: number;
     /** -1..1 */
@@ -33,6 +35,13 @@ export interface MixerOptions {
     dryTaps?: boolean;
     /** restart every processor's state at this context time (built in, so it is never late) */
     resetAt?: number;
+    /**
+     * A master output chain (output engines) after the master processing and before the master
+     * gain. Built only when given (an empty chain is fine, and can be changed later).
+     */
+    masterChain?: ChainConfig;
+    /** resolved result of loadOutputChain() for this context */
+    chainAvailable?: boolean;
 }
 /** Deterministic per-strip seed. */
 export declare const stripSeed: (seed: number, index: number) => number;
@@ -41,6 +50,8 @@ export declare class Mixer {
     private strips;
     readonly masterBus: GainNode;
     readonly masterFx: OutputFxNode;
+    /** the master output chain, when MixerOptions.masterChain was given */
+    readonly masterChain: ChainNode | null;
     readonly output: GainNode;
     readonly voices: string[];
     constructor(ctx: BaseAudioContext, opts: MixerOptions);
@@ -54,6 +65,8 @@ export declare class Mixer {
     settings(id: string): StripSettings;
     setStrip(id: string, patch: Partial<StripSettings>): void;
     setMasterFx(fx: OutputFxSettings): void;
+    /** Change the master output chain (requires MixerOptions.masterChain). */
+    setMasterChain(config: ChainConfig): void;
     setMasterGain(g: number): void;
     /** Restart every processor's state at context time `at` (live START). */
     resetFx(at: number): void;

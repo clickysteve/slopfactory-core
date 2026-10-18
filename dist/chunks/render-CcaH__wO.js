@@ -1,6 +1,7 @@
 import { n as TimeMap } from "./timeline-CjtGBLYv.js";
-import { n as loadOutputFx } from "./node-zW3tNMzU.js";
-import { n as NotePlayer, r as Mixer } from "./player-CF_RFAFw.js";
+import { n as loadOutputFx } from "./node-CleXsb1F.js";
+import { c as chainActive, n as loadOutputChain } from "./node-B0-SEP0H.js";
+import { n as NotePlayer, r as Mixer } from "./player-ClWLHQrW.js";
 //#region src/render/offline.ts
 /**
 * Offline rendering of a Timeline to a master mix and isolated, sample-aligned stems.
@@ -57,9 +58,11 @@ async function renderTimeline(req) {
 	const groups = planRenders(outputs, frames, req.memoryBudget ?? 402653184);
 	const results = [];
 	let processed = true;
+	let chainProcessed = true;
 	for (let g = 0; g < groups.length; g++) {
 		const r = await renderGroup(req, groups[g], frames, sr, (f) => req.onProgress?.((g + f) / groups.length));
 		processed &&= r.processed;
+		chainProcessed &&= r.chainProcessed;
 		results.push(...r.outputs);
 	}
 	req.onProgress?.(1);
@@ -70,7 +73,8 @@ async function renderTimeline(req) {
 		musicSeconds,
 		outputs: results,
 		renders: groups.length,
-		processed
+		processed,
+		chainProcessed
 	};
 }
 async function renderGroup(req, group, frames, sr, progress) {
@@ -87,6 +91,8 @@ async function renderGroup(req, group, frames, sr, progress) {
 		sampleRate: sr
 	});
 	const fxAvailable = req.fxModuleUrl ? await loadOutputFx(ctx, req.fxModuleUrl) : false;
+	const chain = needsAll && req.masterChain && chainActive(req.masterChain) ? req.masterChain : void 0;
+	const chainAvailable = chain && req.chainModuleUrl ? await loadOutputChain(ctx, req.chainModuleUrl) : false;
 	const needed = new Set(needsAll ? req.timeline.voices.map((v) => v.id) : group.map((o) => o.voice));
 	const mixer = new Mixer(ctx, {
 		voices: req.timeline.voices.map((v) => v.id),
@@ -96,7 +102,9 @@ async function renderGroup(req, group, frames, sr, progress) {
 		fxAvailable,
 		seed: req.fxSeed,
 		dryTaps: group.some((o) => o.kind === "stem" && !o.processed),
-		resetAt: pre ? t0 : void 0
+		resetAt: pre ? t0 : void 0,
+		masterChain: chain,
+		chainAvailable
 	});
 	const merger = ctx.createChannelMerger(channels);
 	merger.channelInterpretation = "discrete";
@@ -173,6 +181,7 @@ async function renderGroup(req, group, frames, sr, progress) {
 	if (cancelled || req.signal?.aborted) throw new RenderCancelled();
 	return {
 		processed: fxAvailable,
+		chainProcessed: !chain || chainAvailable,
 		outputs: group.map((o, k) => {
 			const from = pre + (o.kind === "master" ? latency : 0);
 			return {

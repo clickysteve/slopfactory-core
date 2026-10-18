@@ -13,6 +13,7 @@
  */
 import { type ResolveChoke, type ResolveInstrument } from '../audio/player';
 import { Mixer, type StripSettings } from '../audio/mixer';
+import { type ChainConfig } from '../engines/chain';
 import type { OutputFxSettings } from '../dsp/output/settings';
 import { type ControlEvent, type Timeline } from '../events/timeline';
 export declare const EXPORT_SAMPLE_RATE = 44100;
@@ -57,6 +58,13 @@ export interface RenderRequest {
     preRollSeconds?: number;
     /** output-processor worklet URL; without it processing is skipped (and reported) */
     fxModuleUrl?: string;
+    /**
+     * The master output chain (output engines), after master processing and before master gain,
+     * exactly as the live Mixer places it. Master output only, never stems.
+     */
+    masterChain?: ChainConfig;
+    /** chain worklet URL (`chain-worklet.js`); needed when masterChain changes audio */
+    chainModuleUrl?: string;
     maxPerVoice?: number;
     /** controller events, if the application gives them meaning */
     onControl?: (e: ControlEvent, time: number, mixer: Mixer) => void;
@@ -86,6 +94,8 @@ export interface RenderResult {
     renders: number;
     /** false when output processing could not run (no AudioWorklet or no module URL) */
     processed: boolean;
+    /** false when a master chain that changes audio was requested but could not run */
+    chainProcessed: boolean;
 }
 export declare class RenderCancelled extends Error {
     constructor();

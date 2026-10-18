@@ -1,6 +1,6 @@
 # Slop Factory Core
 
-Shared audio, sampling, DSP, rendering, WAV/ZIP export, storage and colour palettes for the Slop Factory family
+Shared audio, sampling, DSP, output engines, rendering, WAV/ZIP export, storage and colour palettes for the Slop Factory family
 of browser music applications. Infrastructure, not an application: the applications provide
 the musical ideas; Core provides the plumbing.
 
@@ -22,6 +22,7 @@ Users today: **ANVIL** (<https://github.com/clickysteve/anvil>), **DOWNBEAT**
 | audio | `@slopfactory/core/audio` | The `Instrument` interface, the `Mixer` (voice processing, gain, pan, mute/solo, master), the `NotePlayer` (retrigger rules, polyphony limits, choke groups). |
 | sampler | `@slopfactory/core/sampler` | Sample zones (tuning, volume, pan, ONE SHOT / GATED / LOOP, start/end, loop points), the polyphonic `SampleInstrument`, decoding, zero-crossing snapping, waveform peaks. |
 | dsp | `@slopfactory/core/dsp` | **Output processing** (Good Bits output stage, drive, crunch, gain, tone) streamed live and offline; **sample transformations** (Good Bits STRETCH FX) with a cache and a Worker runner. |
+| engines | `@slopfactory/core/engines` | **Output engines**: a plugin contract, registries, parameter descriptions, a serial output chain (headless controller, AudioWorklet node, offline `renderChain`, all one implementation) and a note-safe MIDI engine chain. Built-in engines: Good Bits OUTPUT STAGE, DRIVE, CRUNCH, and TONE. See `docs/OUTPUT-ENGINES.md`. |
 | render | `@slopfactory/core/render` | Offline rendering of a timeline to a master and sample-aligned stems through the same graph as live playback. |
 | export | `@slopfactory/core/export` | 16-bit WAV encoding, level statistics, WAV header reading, a stored-ZIP writer and reader, file names. |
 | storage | `@slopfactory/core/storage` | Content-addressed sample storage (SHA-256) in IndexedDB or memory; portable project bundles. |
@@ -112,6 +113,7 @@ npm run check:dist  # rebuild and fail if dist/ differs from what is committed
 * [Architecture](docs/ARCHITECTURE.md): the event model, routing, processing, rendering, stems, storage, choke groups, determinism.
 * [API](docs/API.md): every module's public interface.
 * [Releasing](docs/RELEASING.md): versions, tags, how applications upgrade.
+* [Output engines](docs/OUTPUT-ENGINES.md): the engines found in The Good Bits, the plugin contract, the chain, and a short guide to adding an engine.
 * [Good Bits DSP](docs/GOOD-BITS-DSP.md): what is reused from The Good Bits and how its provenance is checked.
 * [MIDI roadmap](docs/MIDI-ROADMAP.md): the MIDI audit, interfaces and plan.
 
