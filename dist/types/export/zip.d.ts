@@ -10,5 +10,18 @@ export interface ZipEntry {
     data: Uint8Array;
 }
 export declare function createZip(entries: ZipEntry[]): Uint8Array;
-/** Read every file in a ZIP archive, checking CRCs. */
-export declare function readZip(bytes: Uint8Array): Promise<ZipEntry[]>;
+/** Limits for reading archives from untrusted sources (all optional; none by default). */
+export interface ReadZipOptions {
+    /** most files in the archive */
+    maxEntries?: number;
+    /** largest uncompressed file, in bytes */
+    maxEntryBytes?: number;
+    /** most uncompressed bytes in total */
+    maxTotalBytes?: number;
+}
+/** An archive exceeded a ReadZipOptions limit. */
+export declare class ZipLimitError extends Error {
+    constructor(message: string);
+}
+/** Read every file in a ZIP archive, checking CRCs (and the limits, if given). */
+export declare function readZip(bytes: Uint8Array, opts?: ReadZipOptions): Promise<ZipEntry[]>;

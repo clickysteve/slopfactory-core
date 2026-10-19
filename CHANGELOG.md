@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.0
+
+* **Kits and sample libraries** (`@slopfactory/core/kits`, `docs/KITS.md`): one sample and kit
+  management system for every instrument, extracted from The Breakery's INGREDIENTS and KITS and
+  made generic.
+  * `KitLibrary`: samples imported once (decoded to validate, original bytes kept in the
+    application's SampleStore, indexed with name, format, size, duration, sample rate and
+    channels), deduplicated by SHA-256; kits that refer to samples (duplicate and rename copy no
+    audio; deleting never removes a sample another kit or the application uses); a decoded-audio
+    cache within a memory budget; default and current kit.
+  * `KitSession` + `KitHost`: the shared workflow (NEW, SAVE, SAVE AS, LOAD, RENAME, DUPLICATE,
+    DELETE, IMPORT, EXPORT, SET DEFAULT) with UNSAVED tracking, `restore` and `resume`. The
+    application supplies its state as a kit and back; Core never touches tracks or sequencing.
+  * Roles (`DRUM_ROLES`, open to application roles) and `mapKit`: kits onto an application's
+    targets by role, index, capacity and accepted alternates, reporting (never dropping) what
+    cannot be placed.
+  * Portable kit files (`.kit.zip`, format `slopfactory-kit` 1): a manifest and the original
+    sample bytes, with strict, limited reading of untrusted archives and a legacy hook.
+  * `IndexedDbKitStore` (kits, sample index, preferences; all-or-nothing commits; schema 1) and
+    `MemoryKitStore`.
+  * `Auditioner` (previews on the application's AudioContext), `migrateOnce` (resumable,
+    non-destructive migrations), `installBundledKits` (kits shipped with an application).
+* `readZip(bytes, opts)` takes limits (`maxEntries`, `maxEntryBytes`, `maxTotalBytes`) and stops
+  a deflated entry that expands beyond them while it expands (`ZipLimitError`). Without options
+  it behaves as before.
+
 ## 0.4.0
 
 * **Output engines** (`@slopfactory/core/engines`, `docs/OUTPUT-ENGINES.md`): The Good Bits'

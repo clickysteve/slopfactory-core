@@ -121,7 +121,7 @@ See `docs/OUTPUT-ENGINES.md` for the design and the guide to adding an engine.
 | `encodeWav16(channels, sampleRate)` → `Promise<Uint8Array>` | 16-bit PCM WAV (Good Bits' encoder: clamp, scale, round; no dither, no normalisation) |
 | `levelStats(channels)` → `{ peak; peakDb; clipped; rms; silent }` | |
 | `wavInfo(bytes)` → `WavInfo` | header reader for checks |
-| `createZip(entries)`, `readZip(bytes)`, `crc32(...)`, `interface ZipEntry { name; data }` | stored (uncompressed) ZIP, fixed timestamps: the same files give the same archive |
+| `createZip(entries)`, `readZip(bytes, { maxEntries?, maxEntryBytes?, maxTotalBytes? }?)`, `crc32(...)`, `interface ZipEntry { name; data }`, `class ZipLimitError` | stored (uncompressed) ZIP, fixed timestamps: the same files give the same archive; the reader's limits stop oversized and over-expanding archives from untrusted sources |
 | `fileName(parts, ext)`, `slug(s, max?)`, `uniqueNames(names)` | |
 
 ## storage
@@ -133,6 +133,28 @@ See `docs/OUTPUT-ENGINES.md` for the design and the guide to adding an engine.
 | `sampleFromBytes(bytes, name, type?)` → `StoredSample`, `sha256Hex(bytes)` | id = SHA-256 of the bytes |
 | `class StorageError { code: 'quota' \| 'unavailable' \| 'failed' }` | |
 | `writeBundle(app, projectFile, samples)`, `readBundle(bytes, app)` → `BundleContents { manifest; projectText; samples; problems }`, `BUNDLE_FORMAT`, `BUNDLE_VERSION` | portable project bundles |
+
+## kits
+
+Sample libraries, kits, roles and mapping, portable kit files, audition, migration and bundled
+kits. Guide: [KITS.md](KITS.md).
+
+| Export | Summary |
+|---|---|
+| `class KitLibrary({ app, audio, store, decode?, inUse?, cacheBytes? })` | samples: `addSample`, `importFiles`, `listSamples`, `getSample`, `readSample`, `decoded`, `updateSample`, `usage`, `removeSample`, `removeUnused`, `indexSample`, `missing`; kits: `listKits`, `getKit`, `saveKit`, `createKit`, `renameKit`, `duplicateKit`, `deleteKit`, `replaceSample`, `exportKit`, `importKit`; `getDefault`/`setDefault`, `getCurrent`/`setCurrent`, `getMeta`/`setMeta`, `persistent`, `cache` |
+| `class KitSession(library, host, { untitled? })`, `interface KitHost { targets; capture; apply; clear; signature }` | the kit workflow: `newKit`, `save`, `saveAs`, `load`, `preview`, `importFile`, `exportCurrent`, `exportSaved`, `rename`, `duplicate`, `delete`, `setDefault`, `restore`, `resume`, `markSaved`, `refresh`, `onChange`; `kits`, `defaultId`, `currentId`, `name`, `dirty`, `base` |
+| `interface Kit`, `KitData`, `KitInstrument`, `KitSampleRef`, `KitChoke`, `LibrarySample` | the model (plain JSON) |
+| `validateKitData(v)`, `validateKit(v)`, `kitName(v)`, `uniqueKitName(name, taken)`, `copyName(name)`, `cleanText(v, max?)`, `kitSamples(kit)`, `portable(kit)` | validation and names |
+| `class KitError { code; details }` | `invalid`, `not-a-kit`, `version`, `too-large`, `missing-audio`, `damaged`, `name`, `exists`, `not-found`, `in-use`, `unavailable` |
+| `DRUM_ROLES`, `roleInfo(id)`, `rolesOf(family)`, `interface KitTarget { id; role; index?; label?; capacity?; accepts? }` | roles |
+| `mapKit(kit, targets)` → `KitMapping { mapped; unmapped; empty }`, `describeMapping(m)`, `pickOrder(instrument)` | mapping onto an application |
+| `writeKitArchive(kit, samples, generator)`, `readKitArchive(bytes, { limits?, legacy? })` → `ReadKit`, `kitFileName(name)`, `safeArchivePath(p)`, `KIT_FORMAT`, `KIT_VERSION`, `KIT_EXTENSION`, `KIT_ACCEPT`, `KIT_LIMITS` | the portable kit file |
+| `interface KitStore`, `class IndexedDbKitStore(dbName)`, `class MemoryKitStore`, `KIT_STORE_SCHEMA` | kits and the sample index (`commit` is all or nothing) |
+| `class DecodeCache(maxBytes)` | decoded audio, least recently used first out |
+| `class Auditioner({ context, output?, gain?, keep? })`: `play`, `playSample`, `stop`, `active`, `forget` | previews on the application's AudioContext |
+| `migrateOnce(library, id, run)` → `MigrationReport` | one-time, resumable, non-destructive migrations |
+| `installBundledKits(library, kits: BundledKit[])` → `BundledResult[]` | kits shipped with an application |
+| `sniffFormat(bytes, name?)`, `formatExtension(f)`, `formatMime(f)`, `SAMPLE_ID` | |
 
 ## midi
 

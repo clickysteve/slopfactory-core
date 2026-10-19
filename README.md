@@ -1,6 +1,6 @@
 # Slop Factory Core
 
-Shared audio, sampling, DSP, output engines, rendering, WAV/ZIP export, storage and colour palettes for the Slop Factory family
+Shared audio, sampling, DSP, output engines, rendering, WAV/ZIP export, storage, sample libraries and portable kits, and colour palettes for the Slop Factory family
 of browser music applications. Infrastructure, not an application: the applications provide
 the musical ideas; Core provides the plumbing.
 
@@ -27,6 +27,7 @@ Users today: **ANVIL** (<https://github.com/clickysteve/anvil>), **DOWNBEAT**
 | export | `@slopfactory/core/export` | 16-bit WAV encoding, level statistics, WAV header reading, a stored-ZIP writer and reader, file names. |
 | storage | `@slopfactory/core/storage` | Content-addressed sample storage (SHA-256) in IndexedDB or memory; portable project bundles. |
 | midi | `@slopfactory/core/midi` | **Interfaces only.** No shared MIDI implementation yet (see `docs/MIDI-ROADMAP.md`). |
+| kits | `@slopfactory/core/kits` | **Sample libraries and kits**: import and validation, sample metadata and storage (one copy per file, by SHA-256), kits (save, load, rename, duplicate, delete, default) with the shared kit workflow (`KitSession`), instrument roles and mapping a kit onto any application's tracks, portable `.kit.zip` files that move kits (with their audio) between browsers and applications, audition, migration helpers and bundled kits. See `docs/KITS.md`. |
 | palette | `@slopfactory/core/palette` | Colour palettes for the 1-bit interfaces: colour roles (shared, plus each application's own), the style sheet, contrast checks, palette files (importable across applications), preferences, the shared presets (Atari, Dark, Amber, Green Screen, C64, Phosphor, Pink Noise, Rave, Paper) and the palette editor. Cosmetic only. |
 
 Everything is also exported from `@slopfactory/core`.
@@ -113,6 +114,7 @@ npm run check:dist  # rebuild and fail if dist/ differs from what is committed
 * [Architecture](docs/ARCHITECTURE.md): the event model, routing, processing, rendering, stems, storage, choke groups, determinism.
 * [API](docs/API.md): every module's public interface.
 * [Releasing](docs/RELEASING.md): versions, tags, how applications upgrade.
+* [Kits](docs/KITS.md): the shared sample library and kit system, the portable kit format, storage, migration, bundled kits.
 * [Output engines](docs/OUTPUT-ENGINES.md): the engines found in The Good Bits, the plugin contract, the chain, and a short guide to adding an engine.
 * [Good Bits DSP](docs/GOOD-BITS-DSP.md): what is reused from The Good Bits and how its provenance is checked.
 * [MIDI roadmap](docs/MIDI-ROADMAP.md): the MIDI audit, interfaces and plan.
