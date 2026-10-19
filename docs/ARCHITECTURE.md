@@ -20,6 +20,7 @@ DOWNBEAT), an application master insert for offline renders, and fixed fades sch
 | storage | `src/storage/` | export (ZIP) |
 | midi | `src/midi/` | nothing (types only) |
 | palette | `src/palette/` | nothing (DOM only when the editor or `applyPalette` is called) |
+| kits | `src/kits/` | storage (sample stores, bundles), sampler (decoding), export (ZIP, names) |
 
 ### Rules that keep Core reusable
 
@@ -216,6 +217,13 @@ Projects refer to samples by id; audio never goes into project JSON. Bundles are
 `manifest.json`, the application's project file and each sample once; hashes are checked on
 import and problems are reported without blocking the project.
 
+**Kits** (`src/kits/`, [KITS.md](KITS.md)) build on the sample store: a `KitLibrary` keeps the
+audio in the application's `SampleStore` and kits plus a sample index in an `IndexedDbKitStore`
+(its own database per application; one transaction per change). Kits refer to samples by id and
+to instruments by role; `mapKit` maps them onto an application's targets and reports what it
+could not place. Portable `.kit.zip` files carry a kit with its audio between browsers and
+between applications, which cannot share browser storage (it belongs to the page's origin).
+
 ## 7. Determinism
 
 * Musical determinism belongs to the application: it freezes its performance into a Timeline
@@ -237,7 +245,8 @@ their upstream bytes; `vendor.json` records the commit and per-file SHA-256, and
 
 ## 9. Known limitations
 
-* No multi-sample zones (one sample per instrument), no sample-start modulation.
+* No multi-sample zones (one sample per instrument), no sample-start modulation. Kits can hold
+  several samples per instrument; choosing among them is the application's (KITS.md).
 * Output processing is not oversampled; crunch aliasing is intentional, drive aliasing is not
   filtered.
 * Output-stage modes allocate per sample (Good Bits' closure interface); many simultaneous

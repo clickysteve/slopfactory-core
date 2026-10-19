@@ -4,7 +4,7 @@
  * application uses it. See docs/ARCHITECTURE.md.
  *
  * Each module is also importable on its own: `@slopfactory/core/events`, `/audio`,
- * `/sampler`, `/dsp`, `/engines`, `/render`, `/export`, `/storage`, `/midi`, `/palette`.
+ * `/sampler`, `/dsp`, `/engines`, `/render`, `/export`, `/storage`, `/midi`, `/palette`, `/kits`.
  */
 export { CORE_VERSION } from './version';
 export * from './events';
@@ -17,3 +17,4 @@ export * from './export';
 export * from './storage';
 export * from './midi';
 export * from './palette';
+export * from './kits';

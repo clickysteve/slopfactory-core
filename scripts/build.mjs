@@ -11,7 +11,7 @@ import { build } from 'vite';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'dist');
-const MODULES = ['events', 'audio', 'sampler', 'dsp', 'engines', 'render', 'export', 'storage', 'midi', 'palette'];
+const MODULES = ['events', 'audio', 'sampler', 'dsp', 'engines', 'render', 'export', 'storage', 'midi', 'palette', 'kits'];
 
 rmSync(dist, { recursive: true, force: true });
 

@@ -12,9 +12,10 @@ import * as engines from '@slopfactory/core/engines';
 import * as render from '@slopfactory/core/render';
 import * as exp from '@slopfactory/core/export';
 import * as storage from '@slopfactory/core/storage';
+import * as kits from '@slopfactory/core/kits';
 import workletUrl from '@slopfactory/core/output-fx-worklet.js?url';
 import chainWorkletUrl from '@slopfactory/core/chain-worklet.js?url';
 import workerUrl from '@slopfactory/core/transform-worker.js?url';
 
-Object.assign(window, { core, modules: { events, audio, sampler, dsp, engines, render, export: exp, storage }, workletUrl, chainWorkletUrl, workerUrl });
+Object.assign(window, { core, modules: { events, audio, sampler, dsp, engines, render, export: exp, storage, kits }, workletUrl, chainWorkletUrl, workerUrl });
 document.getElementById('status')!.textContent = 'ready';

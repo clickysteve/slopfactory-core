@@ -87,14 +87,41 @@ function createZip(entries) {
 	}
 	return out;
 }
-async function inflateRaw(data) {
+async function inflateRaw(data, limit, name) {
 	const DS = globalThis.DecompressionStream;
 	if (!DS) throw new Error("this archive is compressed and the browser cannot decompress it");
-	const stream = new Blob([data]).stream().pipeThrough(new DS("deflate-raw"));
-	return new Uint8Array(await new Response(stream).arrayBuffer());
+	const reader = new Blob([data]).stream().pipeThrough(new DS("deflate-raw")).getReader();
+	const parts = [];
+	let size = 0;
+	for (;;) {
+		const { done, value } = await reader.read();
+		if (done) break;
+		size += value.length;
+		if (size > limit) {
+			await reader.cancel().catch(() => {});
+			throw new ZipLimitError(`ZIP entry ${name} expands beyond the limit`);
+		}
+		parts.push(value);
+	}
+	const out = new Uint8Array(size);
+	let p = 0;
+	for (const c of parts) {
+		out.set(c, p);
+		p += c.length;
+	}
+	return out;
 }
-/** Read every file in a ZIP archive, checking CRCs. */
-async function readZip(bytes) {
+/** An archive exceeded a ReadZipOptions limit. */
+var ZipLimitError = class extends Error {
+	constructor(message) {
+		super(message);
+		this.name = "ZipLimitError";
+	}
+};
+/** Read every file in a ZIP archive, checking CRCs (and the limits, if given). */
+async function readZip(bytes, opts = {}) {
+	const maxEntry = opts.maxEntryBytes ?? Infinity;
+	let budget = opts.maxTotalBytes ?? Infinity;
 	const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 	let eocd = -1;
 	for (let i = bytes.length - 22; i >= Math.max(0, bytes.length - 65557); i--) if (dv.getUint32(i, true) === 101010256) {
@@ -103,6 +130,7 @@ async function readZip(bytes) {
 	}
 	if (eocd < 0) throw new Error("not a ZIP archive");
 	const count = dv.getUint16(eocd + 10, true);
+	if (count > (opts.maxEntries ?? Infinity)) throw new ZipLimitError(`the archive has too many files (${count})`);
 	let p = dv.getUint32(eocd + 16, true);
 	const dec = new TextDecoder();
 	const out = [];
@@ -111,20 +139,24 @@ async function readZip(bytes) {
 		const method = dv.getUint16(p + 10, true);
 		const crc = dv.getUint32(p + 16, true);
 		const csize = dv.getUint32(p + 20, true);
+		const usize = dv.getUint32(p + 24, true);
 		const nlen = dv.getUint16(p + 28, true);
 		const xlen = dv.getUint16(p + 30, true);
 		const clen = dv.getUint16(p + 32, true);
 		const local = dv.getUint32(p + 42, true);
 		const name = dec.decode(bytes.subarray(p + 46, p + 46 + nlen));
 		p += 46 + nlen + xlen + clen;
-		if (dv.getUint32(local, true) !== 67324752) throw new Error(`damaged ZIP entry ${name}`);
+		if (usize > maxEntry || usize > budget) throw new ZipLimitError(`ZIP entry ${name} is too large`);
+		if (local + 30 > bytes.length || dv.getUint32(local, true) !== 67324752) throw new Error(`damaged ZIP entry ${name}`);
 		const start = local + 30 + dv.getUint16(local + 26, true) + dv.getUint16(local + 28, true);
 		const raw = bytes.subarray(start, start + csize);
 		if (raw.length !== csize) throw new Error(`truncated ZIP entry ${name}`);
 		let data;
 		if (method === 0) data = raw.slice();
-		else if (method === 8) data = await inflateRaw(raw);
+		else if (method === 8) data = await inflateRaw(raw, Math.min(maxEntry, budget), name);
 		else throw new Error(`ZIP entry ${name} uses an unsupported compression method (${method})`);
+		if (data.length > maxEntry || data.length > budget) throw new ZipLimitError(`ZIP entry ${name} is too large`);
+		budget -= data.length;
 		if (crc32(data) !== crc) throw new Error(`ZIP entry ${name} is corrupt (checksum mismatch)`);
 		if (!name.endsWith("/")) out.push({
 			name,
@@ -134,4 +166,4 @@ async function readZip(bytes) {
 	return out;
 }
 //#endregion
-export { createZip as n, readZip as r, crc32 as t };
+export { readZip as i, crc32 as n, createZip as r, ZipLimitError as t };

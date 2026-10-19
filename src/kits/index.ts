@@ -1,0 +1,21 @@
+/** Sample libraries, kits, instrument roles and mapping, portable kit files, audition, migration and bundled kits. */
+export { cleanText, copyName, KitError, kitName, kitSamples, MAX_INSTRUMENTS, MAX_KIT_NAME, MAX_KIT_REFS, MAX_SAMPLES_PER_INSTRUMENT, portable, uniqueKitName, validateKit, validateKitData } from './model';
+export type { Kit, KitChoke, KitData, KitErrorCode, KitInstrument, KitSampleRef } from './model';
+export { formatExtension, formatMime, SAMPLE_ID, sniffFormat } from './sampleInfo';
+export type { LibrarySample } from './sampleInfo';
+export { describeMapping, DRUM_ROLES, mapKit, pickOrder, roleInfo, rolesOf } from './roles';
+export type { KitMapping, KitTarget, MappedInstrument, MatchKind, RoleFamily, RoleInfo, UnmappedInstrument } from './roles';
+export { KIT_ACCEPT, KIT_EXTENSION, KIT_FORMAT, KIT_LIMITS, KIT_VERSION, kitFileName, readKitArchive, safeArchivePath, writeKitArchive } from './archive';
+export type { ArchiveSample, KitArchiveLimits, KitManifest, LegacyKitReader, ManifestSample, ReadKit } from './archive';
+export { IndexedDbKitStore, KIT_STORE_SCHEMA, MemoryKitStore } from './store';
+export type { KitStore, KitStoreChanges } from './store';
+export { DecodeCache, KitLibrary } from './library';
+export type { ImportFile, KitImport, KitLibraryOptions, KitSummary, SampleImport, SampleImportReport } from './library';
+export { KitSession } from './session';
+export type { KitHost, KitSessionOptions } from './session';
+export { Auditioner } from './audition';
+export type { AuditionerOptions } from './audition';
+export { migrateOnce } from './migrate';
+export type { MigrationContext, MigrationReport } from './migrate';
+export { installBundledKits } from './bundled';
+export type { BundledKit, BundledResult } from './bundled';
